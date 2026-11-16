@@ -40,3 +40,7 @@ If using your terminal: `npm install`, `npx wrangler login`, `npx wrangler deplo
 - `develop`: development branch for new features
 
 LingoQuest, its repository and its Supabase project are separate; do not deploy `lingoquest-worker` for Speakwise.
+
+## First production build
+
+The Cloudflare Git connection is configured for this repository's `main` branch, with root `/` and deploy command `npx wrangler deploy`. This documentation-only commit triggers the first Cloudflare build without changing app code.
