@@ -36,13 +36,21 @@
  async function load(){
   if(!enabled()||loading)return;loading=true;label('Đang đồng bộ…');
   try{
-   const [ents,progs,hiddens]=await Promise.all([
+   const [topics,ents,progs,hiddens,activities]=await Promise.all([
+    api.from('speakwise_topics').select('*'),
     api.from('speakwise_entries').select('*'),
     api.from('speakwise_progress').select('*').eq('user_id',user.id),
-    api.from('speakwise_hidden').select('entry_id').eq('user_id',user.id)
+    api.from('speakwise_hidden').select('entry_id').eq('user_id',user.id),
+    api.from('speakwise_activity').select('*').eq('user_id',user.id).order('occurred_at',{ascending:false}).limit(1000)
    ]);
-   for(const r of [ents,progs,hiddens])if(r.error)throw r.error;
+   for(const r of [topics,ents,progs,hiddens,activities])if(r.error)throw r.error;
    const st=ctx.store;
+   for(const row of topics.data||[]){
+     const t={id:row.id,name:row.name,vi:row.vi||row.name,section:row.section||'life',
+       icon:row.icon||'book',desc:row.description||''};
+     const i=st.topics.findIndex(x=>x.id===t.id);
+     if(i<0)st.topics.push(t);else if(row.owner_id===null)st.topics[i]={...st.topics[i],...t};
+   }
    for(const row of ents.data||[]){
     const e={id:row.id,topicId:row.topic_id,phrase:row.phrase,ipa:row.ipa||'',meaning:row.meaning,example:row.example,note:row.note||'',source:row.source||'Đã đồng bộ',addedAt:row.added_at||''};
     const ix=st.entries.findIndex(x=>x.id===e.id);
@@ -53,6 +61,13 @@
     const old=st.progress[row.entry_id]||{};
     if(!old.updatedAt||old.updatedAt<=row.updated_at)st.progress[row.entry_id]={...old,level:row.level,reviews:row.reviews,nextReview:row.next_review,starred:row.starred,updatedAt:row.updated_at};
    }
+   const known=new Set((st.reviewEvents||[]).map(e=>e.id));
+   for(const row of activities.data||[]){
+     const e={id:row.id,date:row.activity_day,entryId:row.entry_id,action:row.action,rating:'synced'};
+     if(!known.has(e.id)){st.reviewEvents.push(e);known.add(e.id)}
+   }
+   st.activityDates=[...new Set([...(st.activityDates||[]),...(activities.data||[]).map(x=>x.activity_day).filter(Boolean)])];
+   st.reviewEvents=st.reviewEvents.slice(-3000);
    st.deletedIds=[...new Set([...(st.deletedIds||[]),...(hiddens.data||[]).map(x=>x.entry_id)])];
    st.entries=st.entries.filter(x=>!st.deletedIds.includes(x.id));
    try{localStorage.setItem('speakwise-collocation-studio-v1',JSON.stringify(st))}catch(_){}
@@ -64,10 +79,23 @@
   writing=true;
   try{
    const st=ctx.store,baseIds=new Set((window.SPEAKING_SEED?.entries||[]).map(x=>x.id));
+   const baseTopicIds=new Set((window.SPEAKING_SEED?.topics||[]).map(x=>x.id));
+   const customTopics=st.topics.filter(t=>!baseTopicIds.has(t.id)).map(t=>({
+     id:t.id,owner_id:user.id,name:t.name,vi:t.vi||t.name,section:t.section||'life',
+     icon:t.icon||'book',description:t.desc||''
+   }));
+   if(customTopics.length){const {error}=await api.from('speakwise_topics').upsert(customTopics,{onConflict:'id'});if(error)throw error;}
    const entries=st.entries.filter(e=>!baseIds.has(e.id)).map(e=>({id:e.id,owner_id:user.id,topic_id:e.topicId,phrase:e.phrase,ipa:e.ipa||'',meaning:e.meaning,example:e.example,note:e.note||'',source:e.source||'',added_at:e.addedAt||new Date().toISOString().slice(0,10)}));
    if(entries.length){const {error}=await api.from('speakwise_entries').upsert(entries,{onConflict:'id'});if(error)throw error;}
    const progress=Object.entries(st.progress).map(([entry_id,p])=>({user_id:user.id,entry_id,level:Math.max(0,Math.min(5,Number(p.level)||0)),reviews:Number(p.reviews)||0,next_review:p.nextReview||null,starred:!!p.starred}));
    if(progress.length){const {error}=await api.from('speakwise_progress').upsert(progress,{onConflict:'user_id,entry_id'});if(error)throw error;}
+   const activities=(st.reviewEvents||[]).map((e,i)=>({
+     id:e.id||('legacy-'+e.date+'-'+e.entryId+'-'+i),
+     user_id:user.id,entry_id:st.entries.some(x=>x.id===e.entryId)?e.entryId:null,
+     action:['flashcard','mcq','recall','write','speak'].includes(e.action)?e.action:'flashcard',
+     activity_day:e.date
+   })).filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.activity_day)).slice(-1000);
+   if(activities.length){const {error}=await api.from('speakwise_activity').upsert(activities,{onConflict:'id'});if(error)throw error;}
    const hidden=[...new Set(st.deletedIds||[])].map(entry_id=>({user_id:user.id,entry_id}));
    if(hidden.length){const {error}=await api.from('speakwise_hidden').upsert(hidden,{onConflict:'user_id,entry_id'});if(error)throw error;}
    label('Đã đồng bộ');
