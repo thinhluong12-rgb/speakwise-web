@@ -15,7 +15,7 @@ export default {
   const incoming=req.headers.get('origin');
   if(incoming&&incoming!==allowed)return new Response('Origin not allowed',{status:403});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:headers(allowed)});
-  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY,model:env.GEMINI_MODEL||'gemini-3.8-flash'},200,allowed);
+  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY,model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash'},200,allowed);
   if(path!=='/evaluate'||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
   if(!env.GEMINI_API_KEY)return reply({error:'AI chưa được cấu hình: thiếu GEMINI_API_KEY.'},503,allowed);
   try{
@@ -32,36 +32,93 @@ export default {
    const prompt='You are an English tutor evaluating ONE student-produced sentence using a target collocation. Be accurate and constructive, preserve their ideas. Not an official IELTS band score. '+JSON.stringify({targetCollocation:limit(b.phrase,200),meaning:limit(b.meaning,300),topic:limit(b.topic,300),mode,studentText:mode==='write'?limit(b.answer,2000):''})+' In speech mode transcribe heard speech accurately, including errors; never invent a transcript. Rate targetUsage, grammar, naturalness, clarity, and if speech pronunciation, each 0–100. Give feedback IN VIETNAMESE, without inventing errors. Return ONLY JSON object {score:number,dimensions:{targetUsage:number,grammar:number,naturalness:number,clarity:number,pronunciation:number|null},transcript:string,strengths:string[],improvements:string[],highlights:[{text:string,label:"good"|"improve"}],suggestedRevision:string}. Highlights MUST match exact uninterrupted parts of the provided or transcribed answer. suggestedRevision should be minimal and keep user meaning. Missing target phrase means low targetUsage score.';
    const parts=[{text:prompt}];
    if(mode==='speak')parts.push({inline_data:{mime_type:mime,data:b.audioBase64}});
-   const model=env.GEMINI_MODEL||'gemini-3.8-flash';
-   if(!/^[a-zA-Z0-9._-]+$/.test(model))throw new Error('Invalid model');
-   const c=new AbortController(),t=setTimeout(()=>c.abort(),50000);let response;
-   try{response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify({contents:[{role:'user',parts}],generationConfig:{temperature:0.2,responseMimeType:'application/json',maxOutputTokens:2800}}),signal:c.signal})}finally{clearTimeout(t)}
-   const payload=await response.json().catch(()=>({}));
-   if(!response.ok){
-     const upstreamError=payload?.error||{};
-     const status=response.status;
-     const upstreamCode=limit(upstreamError.status||'UNKNOWN',50).replace(/[^A-Z0-9_]/gi,'');
-     const reasonByStatus={
-       400:'Gemini từ chối nội dung yêu cầu. Hãy thử câu Viết trước, rồi kiểm tra định dạng âm thanh nếu chỉ chế độ Nói bị lỗi.',
-       401:'Xác thực Gemini thất bại. Kiểm tra API key trong Cloudflare Secrets.',
-       403:'API key chưa được cấp quyền, bị giới hạn, hoặc Gemini không hỗ trợ yêu cầu từ môi trường hiện tại.',
-       404:'Không tìm thấy model Gemini được cấu hình hoặc model không hỗ trợ API này.',
-       408:'Yêu cầu tới Gemini hết thời gian chờ.',
-       429:'Gemini đang giới hạn số yêu cầu hoặc đã hết quota. Kiểm tra Google AI Studio rồi thử lại sau.',
-       500:'Máy chủ Gemini gặp lỗi tạm thời.',
-       503:'Dịch vụ hoặc model Gemini đang quá tải hoặc tạm không khả dụng.'
-     };
-     const advice=reasonByStatus[status]||'Kiểm tra trạng thái API và cấu hình Gemini trong Google AI Studio.';
-     let detail=limit(upstreamError.message||'',320);
-     if(env.GEMINI_API_KEY)detail=detail.split(env.GEMINI_API_KEY).join('[REDACTED]');
-     detail=detail.replace(/AIza[A-Za-z0-9_-]{20,}/g,'[REDACTED]')
+   // Short first attempt with a low-latency multimodal model, then one fallback.
+   // Keep the combined time below the browser's 60-second timeout.
+   const mainModel=env.GEMINI_MODEL||'gemini-3.5-flash-lite';
+   const fallbackModel=env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash';
+   const models=[...new Set([mainModel,fallbackModel])].slice(0,2);
+   if(models.some(m=>!/^[a-zA-Z0-9._-]+$/.test(m)))throw new Error('Invalid model');
+   const totalStart=Date.now();
+   const attempts=[];
+   const apiUrl=m=>'https://generativelanguage.googleapis.com/v1beta/models/'+m+':generateContent';
+   const redact=x=>{
+     let value=limit(x,320);
+     if(env.GEMINI_API_KEY)value=value.split(env.GEMINI_API_KEY).join('[REDACTED]');
+     return value.replace(/AIza[A-Za-z0-9_-]{20,}/g,'[REDACTED]')
        .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[email ẩn]')
        .replace(/\s+/g,' ').trim();
-     console.warn('Speakwise Gemini upstream failed',JSON.stringify({status,upstreamCode,model}));
+   };
+   let payload=null,modelUsed=null,lastError=null;
+   for(let i=0;i<models.length;i++){
+     const selected=models[i],began=Date.now();
+     const isLite=selected.includes('flash-lite');
+     // Gemini 3.8 supports "low", whereas Flash-Lite supports "minimal".
+     const generationConfig={
+       temperature:0.2,responseMimeType:'application/json',
+       maxOutputTokens:mode==='speak'?1900:1400,
+       thinkingConfig:{thinkingLevel:isLite?'minimal':'low'}
+     };
+     const controller=new AbortController();
+     const budget=i===0?20000:26000;
+     const timer=setTimeout(()=>controller.abort(),budget);
+     let response=null,body=null,aborted=false;
+     try{
+       response=await fetch(apiUrl(selected),{
+         method:'POST',
+         headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
+         body:JSON.stringify({contents:[{role:'user',parts}],generationConfig}),
+         signal:controller.signal
+       });
+       body=await response.json().catch(()=>({}));
+     }catch(err){
+       aborted=controller.signal.aborted||err?.name==='AbortError';
+       lastError={
+         status:aborted?504:502,
+         error:aborted?'Gemini quá thời gian chờ trong lần gọi này.':'Không thể kết nối Gemini từ Cloudflare.',
+         code:aborted?'GEMINI_TIMEOUT':'GEMINI_NETWORK',
+         detail:redact(err?.message||''),
+         help:'Dịch vụ Gemini có thể đang quá tải. Hãy thử lại sau hoặc kiểm tra Google AI Studio.'
+       };
+       attempts.push({model:selected,status:aborted?'timeout':'network',elapsedMs:Date.now()-began});
+     }finally{clearTimeout(timer)}
+     if(response?.ok&&body){
+       payload=body;modelUsed=selected;
+       attempts.push({model:selected,status:200,elapsedMs:Date.now()-began});
+       break;
+     }
+     if(response&&!response.ok){
+       const status=response.status,upstream=body?.error||{};
+       const message=redact(upstream.message||'');
+       const code=limit(upstream.status||'UNKNOWN',50).replace(/[^A-Z0-9_]/gi,'');
+       const reason={
+         400:'Yêu cầu chưa được Gemini chấp nhận; cần kiểm tra câu viết hoặc định dạng âm thanh.',
+         401:'API key không hợp lệ hoặc không được cấp quyền.',
+         403:'API key bị giới hạn hoặc Gemini không cho phép yêu cầu này.',
+         404:'Model không hỗ trợ API hoặc chưa khả dụng với tài khoản.',
+         429:'Đã gặp giới hạn yêu cầu hoặc quota. Kiểm tra AI Studio, tránh thử liên tục.',
+         500:'Máy chủ Gemini gặp lỗi tạm thời.',
+         503:'Gemini đang quá tải hoặc tạm không khả dụng.'
+       };
+       lastError={status,error:'Gemini trả về lỗi '+status+(code&&code!=='UNKNOWN'?' ('+code+')':'')+'.',
+         code:'GEMINI_'+status,detail:message,help:reason[status]||'Kiểm tra Google AI Studio.'};
+       attempts.push({model:selected,status,elapsedMs:Date.now()-began});
+       console.warn('Speakwise Gemini status',JSON.stringify({model:selected,status,elapsedMs:Date.now()-began}));
+       // 400/401/403 are request/key errors. 429 may be a hard daily quota.
+       // Trying another model would hide the cause and may waste quota.
+       if([400,401,403,429].includes(status))break;
+     }
+     // One fallback on 404 (model inaccessible), 5xx, network error or timeout.
+     if(i<models.length-1)await new Promise(resolve=>setTimeout(resolve,500));
+   }
+   if(!payload){
+     const error=lastError||{status:503,error:'Gemini không có phản hồi.',code:'GEMINI_UNKNOWN',help:'Thử lại sau.'};
      return reply({
-       error:'Gemini trả về lỗi '+status+(upstreamCode&&upstreamCode!=='UNKNOWN'?' ('+upstreamCode+')':'')+'.',
-       code:'GEMINI_'+status,upstreamStatus:status,detail,help:advice
-     },502,allowed);
+       ...error,
+       detail:error.detail||'',
+       modelsTried:attempts.map(a=>a.model),
+       attempts,
+       elapsedMs:Date.now()-totalStart
+     },error.status===504?504:502,allowed);
    }
    const text=(payload.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').replace(/^\`\`\`(?:json)?/i,'').replace(/\`\`\`$/,'').trim();
    let o;try{o=JSON.parse(text)}catch{return reply({error:'Phản hồi Gemini không đúng định dạng JSON.'},502,allowed)}
@@ -69,7 +126,7 @@ export default {
    if(mode==='speak'&&d.pronunciation!=null)dims.pronunciation=score(d.pronunciation);
    if(score(o.score)===null||Object.values(dims).some(x=>x===null))return reply({error:'AI chưa trả về điểm hợp lệ.'},502,allowed);
    const result={score:score(o.score),dimensions:dims,transcript:mode==='speak'?limit(o.transcript,2000):'',strengths:(Array.isArray(o.strengths)?o.strengths:[]).slice(0,4).map(x=>limit(x,300)),improvements:(Array.isArray(o.improvements)?o.improvements:[]).slice(0,4).map(x=>limit(x,300)),highlights:(Array.isArray(o.highlights)?o.highlights:[]).slice(0,12).filter(x=>x&&['good','improve'].includes(x.label)&&x.text).map(x=>({text:limit(x.text,180),label:x.label})),suggestedRevision:limit(o.suggestedRevision,2000)};
-   return reply({result},200,allowed);
+   return reply({result,modelUsed,elapsedMs:Date.now()-totalStart},200,allowed);
   }catch(e){return reply({error:e.name==='AbortError'?'AI phản hồi quá lâu.':'Không thể chấm: '+limit(e.message,180)},502,allowed)}
  }
 };
