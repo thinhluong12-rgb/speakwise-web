@@ -135,7 +135,8 @@
       original_text:String(m.originalText||'').slice(0,2000),
       suggested_revision:String(m.revisedText||'').slice(0,2000),
       note:String(m.note||'').slice(0,1200),
-      status:m.status==='resolved'?'resolved':'open'
+      status:m.status==='resolved'?'resolved':'open',
+      updated_at:m.updatedAt||m.createdAt||new Date().toISOString()
    })).filter(m=>m.id&&m.original_text).slice(0,400);
    if(mistakes.length){const {error}=await api.from('speakwise_mistakes').upsert(mistakes,{onConflict:'id'});if(error)throw error;}
    const preferences={user_id:user.id,data:{
