@@ -1,0 +1,12 @@
+name = "speakwise-studio"
+main = "ai-worker.js"
+compatibility_date = "2026-11-01"
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+run_worker_first = ["/evaluate", "/health"]
+
+[vars]
+GEMINI_MODEL = "gemini-2.5-flash"
+# GEMINI_API_KEY must be configured using Wrangler secrets.
