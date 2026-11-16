@@ -36,23 +36,37 @@
  async function load(){
   if(!enabled()||loading)return;loading=true;label('Đang đồng bộ…');
   try{
-   const [ents,progs,hiddens]=await Promise.all([
+   const [topics,ents,progs,hiddens,events]=await Promise.all([
+    api.from('speakwise_topics').select('*'),
     api.from('speakwise_entries').select('*'),
     api.from('speakwise_progress').select('*').eq('user_id',user.id),
-    api.from('speakwise_hidden').select('entry_id').eq('user_id',user.id)
+    api.from('speakwise_hidden').select('entry_id').eq('user_id',user.id),
+    api.from('speakwise_activity').select('*').eq('user_id',user.id).order('occurred_at',{ascending:false}).limit(600)
    ]);
-   for(const r of [ents,progs,hiddens])if(r.error)throw r.error;
+   for(const r of [topics,ents,progs,hiddens,events])if(r.error)throw r.error;
    const st=ctx.store;
+   for(const row of topics.data||[]){
+    if(!st.topics.some(t=>t.id===row.id))
+      st.topics.push({id:row.id,section:row.section||'life',name:row.name,vi:row.vi||'',desc:row.description||'',icon:row.icon||'book'});
+   }
    for(const row of ents.data||[]){
-    const e={id:row.id,topicId:row.topic_id,phrase:row.phrase,ipa:row.ipa||'',meaning:row.meaning,example:row.example,note:row.note||'',source:row.source||'Đã đồng bộ',addedAt:row.added_at||''};
+    const e={id:row.id,topicId:row.topic_id,phrase:row.phrase,ipa:row.ipa||'',meaning:row.meaning,example:row.example,note:row.note||'',source:row.source||'Đã đồng bộ',addedAt:row.added_at||'',cefr:row.cefr||null,updatedAt:row.updated_at||''};
     const ix=st.entries.findIndex(x=>x.id===e.id);
     if(ix<0)st.entries.push(e);
-    else if(row.owner_id===null)st.entries[ix]={...st.entries[ix],...e};
+    else if(row.owner_id===null || !st.entries[ix].updatedAt || st.entries[ix].updatedAt<=e.updatedAt)
+      st.entries[ix]={...st.entries[ix],...e};
    }
    for(const row of progs.data||[]){
     const old=st.progress[row.entry_id]||{};
     if(!old.updatedAt||old.updatedAt<=row.updated_at)st.progress[row.entry_id]={...old,level:row.level,reviews:row.reviews,nextReview:row.next_review,starred:row.starred,updatedAt:row.updated_at};
    }
+   const existingEvents=new Set((st.activityLog||[]).map(e=>e.id));
+   for(const row of events.data||[]){
+    if(existingEvents.has(row.id))continue;
+    st.activityLog.push({id:row.id,entryId:row.entry_id,type:row.action,day:row.activity_day,at:row.occurred_at});
+    existingEvents.add(row.id);
+   }
+   st.activityLog.sort((a,b)=>String(a.at).localeCompare(String(b.at)));
    st.deletedIds=[...new Set([...(st.deletedIds||[]),...(hiddens.data||[]).map(x=>x.entry_id)])];
    st.entries=st.entries.filter(x=>!st.deletedIds.includes(x.id));
    try{localStorage.setItem('speakwise-collocation-studio-v1',JSON.stringify(st))}catch(_){}
@@ -64,12 +78,21 @@
   writing=true;
   try{
    const st=ctx.store,baseIds=new Set((window.SPEAKING_SEED?.entries||[]).map(x=>x.id));
-   const entries=st.entries.filter(e=>!baseIds.has(e.id)).map(e=>({id:e.id,owner_id:user.id,topic_id:e.topicId,phrase:e.phrase,ipa:e.ipa||'',meaning:e.meaning,example:e.example,note:e.note||'',source:e.source||'',added_at:e.addedAt||new Date().toISOString().slice(0,10)}));
+   const baseTopics=new Set((window.SPEAKING_SEED?.topics||[]).map(t=>t.id));
+   const customTopics=st.topics.filter(t=>!baseTopics.has(t.id)).map(t=>({
+    id:t.id,owner_id:user.id,section:t.section||'life',name:t.name,vi:t.vi||'',icon:t.icon||'book',description:t.desc||''
+   }));
+   if(customTopics.length){const {error}=await api.from('speakwise_topics').upsert(customTopics,{onConflict:'id'});if(error)throw error;}
+   const entries=st.entries.filter(e=>!baseIds.has(e.id)).map(e=>({id:e.id,owner_id:user.id,topic_id:e.topicId,phrase:e.phrase,ipa:e.ipa||'',meaning:e.meaning,example:e.example,note:e.note||'',source:e.source||'',added_at:e.addedAt||new Date().toISOString().slice(0,10),cefr:e.cefr||null}));
    if(entries.length){const {error}=await api.from('speakwise_entries').upsert(entries,{onConflict:'id'});if(error)throw error;}
    const progress=Object.entries(st.progress).map(([entry_id,p])=>({user_id:user.id,entry_id,level:Math.max(0,Math.min(5,Number(p.level)||0)),reviews:Number(p.reviews)||0,next_review:p.nextReview||null,starred:!!p.starred}));
    if(progress.length){const {error}=await api.from('speakwise_progress').upsert(progress,{onConflict:'user_id,entry_id'});if(error)throw error;}
    const hidden=[...new Set(st.deletedIds||[])].map(entry_id=>({user_id:user.id,entry_id}));
    if(hidden.length){const {error}=await api.from('speakwise_hidden').upsert(hidden,{onConflict:'user_id,entry_id'});if(error)throw error;}
+   const activity=(st.activityLog||[]).slice(-600).map(e=>({
+    id:e.id,user_id:user.id,entry_id:e.entryId||null,action:e.type||'flashcard',activity_day:e.day,occurred_at:e.at
+   })).filter(e=>e.id&&e.activity_day);
+   if(activity.length){const {error}=await api.from('speakwise_activity').upsert(activity,{onConflict:'id',ignoreDuplicates:true});if(error)throw error;}
    label('Đã đồng bộ');
   }catch(e){label('Đồng bộ lỗi');tell('Không đồng bộ được, nhưng vẫn đã lưu cục bộ: '+(e.message||String(e)))}finally{writing=false}
  }
