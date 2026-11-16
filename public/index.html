@@ -360,6 +360,16 @@ body{font-size:15px;line-height:1.62}
 .sw-journey-summary h2{color:#1f6355}.sw-journey-summary p{color:#66887b;line-height:1.7}
 @media(max-width:620px){.sw-journey-top{display:block}.sw-journey-top>div{margin-top:10px}.sw-journey-card{padding:20px 14px}.sw-journey-steps span{font-size:11px;padding:8px 2px}}
 
+
+.sw-topic-report{margin:0 0 15px;padding:18px;border:1px solid #d2e9dc;border-radius:15px;background:#f5fbf7}
+.sw-topic-report h3{font-size:17px;color:#276d5d;margin:0 0 5px}
+.sw-topic-report p{font-size:12px;color:#6d8b80;line-height:1.55;margin:0 0 12px}
+.sw-topic-report-numbers{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:13px}
+.sw-topic-report-numbers span{font-size:12px;color:#628076;display:flex;align-items:baseline;gap:6px}
+.sw-topic-report-numbers strong{font-size:22px;color:#1e7766}
+.sw-topic-report-track{height:8px;background:#e0efe7;border-radius:22px;overflow:hidden}
+.sw-topic-report-track i{display:block;height:100%;background:#279c86;border-radius:22px}
+
 </style>
 </head>
 <body>
@@ -461,7 +471,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function readSaved(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){return {}}}
   function combine(seedList, userList, key){const map = new Map((seedList||[]).map(e=>[e[key],e]));for(const e of (userList||[])){if(e && e[key])map.set(e[key],{...(map.get(e[key])||{}),...e})}return [...map.values()]}
   const saved=readSaved();
-  const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[],mistakes:Array.isArray(saved.mistakes)?saved.mistakes:[],settings:{dailyGoal:8,...(saved.settings||{})},lastPractice:saved.lastPractice||null};
+  const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[],mistakes:Array.isArray(saved.mistakes)?saved.mistakes:[],settings:{dailyGoal:8,...(saved.settings||{})},lastPractice:saved.lastPractice||null,learningJourney:saved.learningJourney||null};
   store.entries=store.entries.filter(e=>!store.deletedIds.includes(e.id));
   const ui={view:'home',section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false,focusMode:false,journey:null,journeyReturn:'home'};
   const GROUPS_KEY='speakwise-collapsed-groups-v3';
@@ -530,7 +540,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function stageOf(id){const p=progress(id),ev=evidenceFor(id);if(ev.recallDays.length>=1&&ev.applyDays.length>=2)return 'applied';if(ev.recallDays.length>=1)return 'recalled';return Number(p.reviews)>0?'recognised':'new'}
   function topicMetrics(id){const arr=store.entries.filter(e=>e.topicId===id),st=arr.map(e=>stageOf(e.id));return {total:arr.length,recognised:st.filter(x=>x!=='new').length,recalled:st.filter(x=>x==='recalled'||x==='applied').length,applied:st.filter(x=>x==='applied').length}}
   function todayActivity(){const r=(store.reviewEvents||[]).filter(e=>e.date===localDay());return {actions:r.length,unique:new Set(r.map(e=>e.entryId).filter(Boolean)).size}}
-  function recommendation(max=8){const now=localDay();const rank=e=>{const p=progress(e.id),st=stageOf(e.id);if(p.nextReview&&p.nextReview<=now)return st==='applied'?80:110;if(st==='recognised')return 90;if(st==='new')return 60;if(st==='recalled')return 45;return 10};return [...store.entries].sort((a,b)=>rank(b)-rank(a)||String(progress(a.id).lastReviewed||'').localeCompare(String(progress(b.id).lastReviewed||''))||a.phrase.localeCompare(b.phrase)).slice(0,Math.min(20,Math.max(1,max))).map(e=>e.id)}
+  function recommendation(max=8){const now=localDay(),seen=new Set((store.reviewEvents||[]).filter(x=>x.date===now).map(x=>x.entryId));const rank=e=>{const p=progress(e.id),st=stageOf(e.id);const base=p.nextReview&&p.nextReview<=now?(st==='applied'?80:110):st==='recognised'?90:st==='new'?60:st==='recalled'?45:10;return base-(seen.has(e.id)?60:0)};return [...store.entries].sort((a,b)=>rank(b)-rank(a)||String(progress(a.id).lastReviewed||'').localeCompare(String(progress(b.id).lastReviewed||''))||a.phrase.localeCompare(b.phrase)).slice(0,Math.min(20,Math.max(1,max))).map(e=>e.id)}
   function toggleFocus(){ui.focusMode=!ui.focusMode;render()}
   function topicGrid(){return '<div class="topic-grid sw-topic-grid">'+store.topics.map(t=>{const m=topicMetrics(t.id),pct=m.total?Math.round(m.applied/m.total*100):0;return '<button type="button" class="topic-tile sw-progress-tile '+(ui.topic===t.id?'active':'')+'" data-action="topic" data-topic="'+esc(t.id)+'" aria-expanded="'+(ui.topic===t.id)+'" aria-controls="selectedTopicCollocations"><span class="topic-symbol">'+icon(t.icon||'book')+'</span><span class="sw-topic-info"><strong>'+esc(t.name)+'</strong><small>'+m.total+' cụm · '+m.recalled+' đã nhớ lại · '+m.applied+' vận dụng vững</small><span class="sw-topic-progress"><i style="width:'+pct+'%"></i></span></span></button>'}).join('')+'</div>'}
   function studyDates(){const d=new Set(store.activityDates||[]);for(const p of Object.values(store.progress))if(p.lastReviewed)d.add(p.lastReviewed);return d}
@@ -571,7 +581,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       (last?'<p class="sw-small">Hoạt động gần nhất: '+esc(last.date||'')+'</p><button class="btn btn-primary" data-nav="'+last.view+'">Tiếp tục '+
         ({flashcards:'Flashcards',memory:'Ghi nhớ',apply:'Ứng dụng'}[last.view])+'</button>':
         '<p class="sw-small">Chưa có phiên học trước đó. Hãy bắt đầu phiên ngắn hôm nay.</p>')+
-      '<div class="sw-shortcuts"><button data-action="openMistakes">'+icon('notebook')+' My Mistakes <strong>'+pending+'</strong></button>'+
+      '<div class="sw-shortcuts">'+(store.learningJourney?.ids?.length?'<button data-action="resumeJourney">'+icon('arrowRight')+' Tiếp tục Learning Journey</button>':'')+
+      '<button data-action="openMistakes">'+icon('notebook')+' My Mistakes <strong>'+pending+'</strong></button>'+
       '<button data-nav="topics">'+icon('layers')+' Topic Mastery '+icon('arrowRight')+'</button></div>'+
       '<h4>Cần củng cố</h4>'+(weak.length?weak.map(e=>'<button class="sw-weak" data-action="detail" data-id="'+esc(e.id)+'"><b>'+
       esc(e.phrase)+'</b><small>'+esc(e.meaning)+'</small></button>').join(''):'<p class="sw-small">Chưa có cụm nào được xếp vào nhóm cần củng cố.</p>')+
@@ -587,8 +598,15 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     if(ui.filter==='new'&&progress(e.id).level>0)return false;
     const q=ui.query.toLocaleLowerCase('vi').trim();return !q||[e.phrase,e.meaning,e.example,e.note||'',t.vi,t.name].some(s=>String(s).toLocaleLowerCase('vi').includes(q))
   })}
+  function topicReport(id){
+    const m=topicMetrics(id),percent=m.total?Math.round(m.applied/m.total*100):0;
+    return '<div class="sw-topic-report"><div><h3>Topic Mastery</h3><p>Chỉ tính vận dụng vững khi có ít nhất 2 ngày dùng đúng và đã từng nhớ lại thành công.</p></div>'+
+      '<div class="sw-topic-report-numbers"><span><strong>'+m.recognised+'</strong> Đã nhận diện</span>'+
+      '<span><strong>'+m.recalled+'</strong> Đã nhớ lại</span><span><strong>'+m.applied+'</strong> Vận dụng vững</span></div>'+
+      '<div class="sw-topic-report-track" role="progressbar" aria-label="Vận dụng vững theo topic" aria-valuemin="0" aria-valuemax="'+m.total+'" aria-valuenow="'+m.applied+'"><i style="width:'+percent+'%"></i></div></div>';
+  }
   function library(){return intro('Topic Collocations','Chọn một chủ đề để xem và luyện các collocations bên dưới.')+topicGrid()+
-      (ui.topic==='all'?'':'<section class="library-card" id="selectedTopicCollocations"><div class="library-toolbar"><div class="library-toolbar-title"><strong>'+
+      (ui.topic==='all'?'':topicReport(ui.topic)+'<section class="library-card" id="selectedTopicCollocations"><div class="library-toolbar"><div class="library-toolbar-title"><strong>'+
       (ui.topic==='all'?'All Collocations':esc(topic(ui.topic)?.name||'All Collocations'))+
       '</strong><small><span id="filteredCount">'+filterEntries().length+'</span> collocations</small></div><div class="filters"><div class="search-box">'+icon('search')+
       '<input aria-label="Tìm cụm từ" id="searchInput" autocomplete="off" placeholder="Tìm cụm từ, nghĩa, ví dụ..." value="'+esc(ui.query)+'"/></div>'+
@@ -806,10 +824,22 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     store.learningJourney={ids:valid,at:0,step:'learn',createdAt:new Date().toISOString()};
     save();render();window.scrollTo({top:0,behavior:'smooth'});
   }
+  function resumeJourney(){
+    const saved=store.learningJourney;
+    if(!saved?.ids?.length){toast('Chưa có phiên học để tiếp tục.');return}
+    const ids=saved.ids.filter(id=>store.entries.some(e=>e.id===id));
+    if(!ids.length){delete store.learningJourney;save();toast('Các collocations trong phiên học không còn khả dụng.');return}
+    const at=Math.min(Math.max(0,Number(saved.at)||0),ids.length-1);
+    const step=['learn','recall','apply','review'].includes(saved.step)?saved.step:'learn';
+    ui.journey={ids,at,step,recall:saved.recall||null,startedAt:Date.now()};
+    ui.view='journey';ui.focusMode=true;ui.sentenceMode='write';ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceText='';
+    ui.quiz={answerId:ids[at],options:[],selected:null,isCorrect:null};
+    render();window.scrollTo({top:0,behavior:'smooth'});
+  }
   function syncJourneyProgress(){
     if(!ui.journey)return;
     store.learningJourney={
-      ids:ui.journey.ids,at:ui.journey.at,step:ui.journey.step,
+      ids:ui.journey.ids,at:ui.journey.at,step:ui.journey.step,recall:ui.journey.recall,
       createdAt:store.learningJourney?.createdAt||new Date().toISOString()
     };
     save();
@@ -839,7 +869,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     const correct=!skipped&&normalize(answer)===normalize(entry.phrase);
     j.recall={checked:true,correct,answer:String(answer||'').slice(0,200)};
     review(entry.id,correct?'good':'hard',{action:'recall',correct});
-    render();
+    syncJourneyProgress();render();
   }
   function renderJourney(){
     const j=ui.journey;
@@ -848,8 +878,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     if(j.step==='done'){
       const stats=j.ids.reduce((out,id)=>{out[stageOf(id)]++;return out},{new:0,recognised:0,recalled:0,applied:0});
       return intro('Hoàn thành phiên học','Bạn đã đi qua các bước học. Các lần nhớ lại và vận dụng đúng sẽ được tiếp tục theo dõi ở các buổi sau.')+
-        '<section class="sw-journey-summary">'+icon('checkCircle')+'<h2>'+total+' collocations đã luyện</h2><p>Đã nhận diện: '+stats.recognised+
-        ' · Đã nhớ lại: '+stats.recalled+' · Vận dụng vững: '+stats.applied+'</p>'+
+        '<section class="sw-journey-summary">'+icon('checkCircle')+'<h2>'+total+' collocations đã luyện</h2><p>Đã nhận diện: '+(total-stats.new)+
+        ' · Đã nhớ lại: '+(stats.recalled+stats.applied)+' · Vận dụng vững: '+stats.applied+'</p>'+
         '<div class="sw-journey-controls"><button class="btn btn-primary" data-nav="home">Về Trang chủ</button>'+
         '<button class="btn btn-muted" data-action="openMistakes">Xem sổ lỗi</button></div></section>';
     }
@@ -919,7 +949,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     store.mistakes.unshift({id:'mistake-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,9),
       entryId:entry.id,mode:ui.sentenceMode,originalText:text.slice(0,2000),
       revisedText:String(result.suggestedRevision||'').slice(0,2000),
-      note:note.slice(0,1200),status:'open',createdAt:new Date().toISOString()});
+      note:note.slice(0,1200),status:'open',createdAt:new Date().toISOString(),updatedAt:new Date().toISOString()});
     store.mistakes=store.mistakes.slice(0,400);save();toast('Đã lưu lỗi để luyện lại.');
   }
   function mistakesPage(){
@@ -1139,11 +1169,12 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'saveMistake':saveCurrentMistake();break;
       case 'openMistakes':goView('mistakes');break;
       case 'retryMistake':retryMistake(id);break;
-      case 'toggleMistake':{const m=store.mistakes.find(x=>x.id===id);if(m){m.status=m.status==='resolved'?'open':'resolved';save();render()}break}
+      case 'toggleMistake':{const m=store.mistakes.find(x=>x.id===id);if(m){m.status=m.status==='resolved'?'open':'resolved';m.updatedAt=new Date().toISOString();save();render()}break}
       case 'toggleFocus':toggleFocus();break;
       case 'journeyAdvance':journeyNext();break;
       case 'journeySkipRecall':journeyCheckRecall('',true);break;
       case 'startToday':startJourney(recommendation(Number(store.settings.dailyGoal)||8));break;
+      case 'resumeJourney':resumeJourney();break;
       case 'entryTab':entryModal(null,el.dataset.tab);break;
       case 'selectExcel':document.getElementById('importFile').click();break;
       case 'downloadTemplate':downloadTemplate();break;
