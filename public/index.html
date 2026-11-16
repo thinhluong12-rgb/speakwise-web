@@ -721,6 +721,126 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     if(ix>=0)store.entries[ix]={...store.entries[ix],...obj};else store.entries.push(obj);
     save();closeModal();closeDrawer();render();toast(ix>=0?'Đã cập nhật collocation.':'Đã thêm collocation.');
   }
+  function batchAddCollocations(rows,source='Nhập dữ liệu'){
+    let added=0,skipped=0;
+    for(const row of rows){
+      const name=String(row.topicName||'').trim().slice(0,100);
+      const phrase=String(row.phrase||'').trim().slice(0,180);
+      const meaning=String(row.meaning||'').trim().slice(0,240);
+      const example=String(row.example||'').trim().slice(0,1000);
+      if(!name||!phrase||!meaning||!example){skipped++;continue}
+      const t=ensureTopic(name);
+      if(store.entries.some(e=>e.topicId===t.id&&e.phrase.toLowerCase()===phrase.toLowerCase())){skipped++;continue}
+      const level=String(row.cefr||'').trim().toUpperCase();
+      store.entries.push({
+        id:'batch-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10),
+        topicId:t.id,phrase,meaning,example,ipa:String(row.ipa||'').trim().slice(0,200),
+        note:String(row.note||'').trim().slice(0,1000),
+        cefr:['A1','A2','B1','B2','C1','C2'].includes(level)?level:null,
+        source,addedAt:localDay()
+      });added++;
+    }
+    if(added){save();ui.topic='all';ui.page=1;ui.deck=[];ui.quiz=null;render()}
+    return {added,skipped};
+  }
+  let spreadsheetPromise=null;
+  async function loadSpreadsheet(){
+    if(window.XLSX)return window.XLSX;
+    if(!spreadsheetPromise)spreadsheetPromise=new Promise((resolve,reject)=>{
+      const script=document.createElement('script');
+      script.src='https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+      script.crossOrigin='anonymous';
+      script.onload=()=>window.XLSX?resolve(window.XLSX):reject(new Error('Không tìm thấy trình đọc Excel.'));
+      script.onerror=()=>reject(new Error('Không tải được thư viện Excel. Kiểm tra Internet rồi thử lại.'));
+      document.head.appendChild(script);
+    }).catch(e=>{spreadsheetPromise=null;throw e});
+    return spreadsheetPromise;
+  }
+  async function downloadTemplate(){
+    try{
+      const xlsx=await loadSpreadsheet();
+      const headers=['Topic','Collocation','Meaning (VI)','Example (EN)','IPA (optional)','Usage note (optional)','CEFR (optional)'];
+      const sample=[headers,
+        ['Work & Business','meet tight deadlines','đáp ứng thời hạn gấp','I often have to meet tight deadlines at work.','','meet a deadline, not finish a deadline','B2'],
+        ['Hobbies & Free Time','wind down','thư giãn','I usually wind down by listening to music.','','','B1']];
+      const book=xlsx.utils.book_new();
+      const sheet=xlsx.utils.aoa_to_sheet(sample);
+      sheet['!cols']=[{wch:30},{wch:28},{wch:38},{wch:62},{wch:25},{wch:47},{wch:18}];
+      xlsx.utils.book_append_sheet(book,sheet,'Collocations');
+      xlsx.writeFile(book,'Speakwise_Collocations_Template.xlsx');
+    }catch(e){toast('Không tạo được mẫu Excel: '+e.message)}
+  }
+  async function importExcel(file){
+    if(!file)return;
+    if(file.name.toLowerCase().endsWith('.json')){await importJSON(file);return}
+    if(file.size>3*1024*1024){toast('File quá lớn; tối đa 3 MB.');return}
+    try{
+      const xlsx=await loadSpreadsheet();
+      const bytes=await file.arrayBuffer();
+      const book=xlsx.read(bytes,{type:'array',cellFormula:false,cellHTML:false});
+      const sheet=book.Sheets['Collocations']||book.Sheets[book.SheetNames[0]];
+      if(!sheet)throw new Error('Excel không có sheet dữ liệu.');
+      const rows=xlsx.utils.sheet_to_json(sheet,{defval:'',raw:false,blankrows:false});
+      if(rows.length>500)throw new Error('Giới hạn 500 dòng mỗi lần nhập.');
+      const prepared=rows.map(row=>({
+        topicName:row['Topic']||row['Topic (EN)']||row.topic||'',
+        phrase:row['Collocation']||row['Phrase']||'',
+        meaning:row['Meaning (VI)']||row['Meaning']||'',
+        example:row['Example (EN)']||row['Example']||'',
+        ipa:row['IPA (optional)']||row['IPA']||'',
+        note:row['Usage note (optional)']||row['Usage note']||row['Note']||'',
+        cefr:row['CEFR (optional)']||row['CEFR']||''
+      }));
+      if(!prepared.length)throw new Error('Không có dòng collocation hợp lệ.');
+      const result=batchAddCollocations(prepared,'Nhập Excel');
+      if(result.added)closeModal();
+      toast('Đã thêm '+result.added+' cụm; bỏ qua '+result.skipped+' dòng thiếu dữ liệu hoặc bị trùng.');
+    }catch(e){toast('Nhập Excel thất bại: '+(e.message||String(e)))}
+  }
+  async function generateAiCollocations(form){
+    if(ui.aiBusy)return;
+    const fd=new FormData(form);
+    const get=k=>String(fd.get(k)||'').trim();
+    const choice=topic(get('topicId'));
+    const newName=get('newTopic');
+    const topicName=(newName||choice?.name||'').slice(0,100);
+    const cefr=get('cefr'),count=Number(get('count'));
+    if(!topicName||!['A1','A2','B1','B2','C1','C2'].includes(cefr)||![5,10,15,20].includes(count)){toast('Chọn topic, CEFR và số lượng hợp lệ.');return}
+    ui.aiForm={topicId:get('topicId'),newTopic:newName,cefr,count};
+    ui.aiBusy=true;ui.aiError=null;ui.aiDraft=[];ui.aiSelected=[];ui.aiDraftTopic=topicName;ui.aiDraftCefr=cefr;
+    entryModal(null,'ai');
+    try{
+      if(!aiEndpoint)throw new Error('Chưa kết nối dịch vụ AI.');
+      const api=new URL('/generate',new URL(aiEndpoint).origin);
+      const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),65000);
+      let response;
+      try{response=await fetch(api,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({topic:topicName,cefr,count}),signal:controller.signal})}
+      finally{clearTimeout(timer)}
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error([data.error||'Không kết nối được AI.',data.detail||'',data.help||''].filter(Boolean).join(' '));
+      const rows=Array.isArray(data.items)?data.items:[];
+      const seen=new Set();
+      ui.aiDraft=rows.filter(x=>{
+        if(!x||!x.phrase||!x.meaning||!x.example)return false;
+        const key=String(x.phrase).trim().toLowerCase();
+        if(seen.has(key))return false;seen.add(key);return true;
+      }).slice(0,count).map(x=>({
+        phrase:String(x.phrase).trim().slice(0,180),meaning:String(x.meaning).trim().slice(0,240),
+        example:String(x.example).trim().slice(0,1000),note:String(x.note||'').trim().slice(0,1000),
+        cefr,topicName
+      }));
+      if(!ui.aiDraft.length)throw new Error('AI chưa tạo được collocations hợp lệ.');
+      ui.aiSelected=ui.aiDraft.map((_,i)=>i);
+    }catch(e){ui.aiError=e.name==='AbortError'?'AI phản hồi quá lâu. Hãy thử số lượng ít hơn.':String(e.message||e)}
+    finally{ui.aiBusy=false;entryModal(null,'ai')}
+  }
+  function saveAiDraft(){
+    const chosen=(ui.aiDraft||[]).filter((_,i)=>ui.aiSelected.includes(i));
+    if(!chosen.length){toast('Chưa chọn collocation nào để lưu.');return}
+    const result=batchAddCollocations(chosen,'AI tạo · cần kiểm chứng');
+    if(result.added){ui.aiDraft=[];ui.aiSelected=[];closeModal();goView('topics')}
+    toast('Đã lưu '+result.added+' cụm; bỏ qua '+result.skipped+' cụm trùng.');
+  }
   function speak(id){const e=store.entries.find(e=>e.id===id);if(!e)return;if(!window.speechSynthesis){toast('Trình duyệt này chưa hỗ trợ phát âm.');return}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(e.phrase.replace(/something/gi,'the task'));u.lang='en-GB';u.rate=.86;const voices=speechSynthesis.getVoices();const preferred=voices.find(v=>v.lang.toLowerCase().startsWith('en-gb'))||voices.find(v=>v.lang.toLowerCase().startsWith('en'));if(preferred)u.voice=preferred;speechSynthesis.speak(u)}
   function toggleStar(id){let p=store.progress[id]||{};p.starred=!p.starred;store.progress[id]=p;save();render();if(ui.drawer===id)openDrawer(id);toast(p.starred?'Đã lưu vào mục yêu thích.':'Đã bỏ khỏi mục yêu thích.')}
   function review(id,rating,type='flashcard'){
