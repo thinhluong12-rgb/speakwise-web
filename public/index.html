@@ -137,6 +137,10 @@ body{font-size:15px;line-height:1.62}
 .ai-advanced-config .ai-endpoint-row input{min-width:190px}
 @media(max-width:480px){.ai-settings{padding:12px;gap:10px}.ai-settings-copy>strong{font-size:15px}.ai-settings-copy>p{font-size:13px}}
 .sr-only{position:absolute;width:1px;height:1px;white-space:nowrap;clip:rect(0 0 0 0);overflow:hidden}
+.ai-error-inline{margin:14px 0;padding:16px 18px;border:1px solid #edcdbe;background:#fff8f3;border-radius:13px;color:#793e2c}
+.ai-error-inline strong{font-size:15px;display:block;margin-bottom:7px}
+.ai-error-inline p{white-space:pre-line;overflow-wrap:anywhere;line-height:1.7;font-size:14px;margin:0 0 8px}
+.ai-error-inline span{font-size:12px;color:#99644f}
 .ai-pending{display:flex;align-items:center;gap:10px;padding:16px;border-radius:12px;background:#eef6fc;color:#4d799a;font-size:13px;font-weight:700}
 .ai-feedback{margin-top:18px;border:1px solid #dbe8e4;border-radius:17px;padding:19px;background:white;box-shadow:0 6px 18px #254b4910}
 .ai-feedback-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:16px;border-bottom:1px solid #eaf0f2}
@@ -301,7 +305,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   const saved=readSaved();
   const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[]};
   store.entries=store.entries.filter(e=>!store.deletedIds.includes(e.id));
-  const ui={view:'library',section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false};
+  const ui={view:'library',section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false};
   const GROUPS_KEY='speakwise-collapsed-groups-v3';
   let collapsedGroups={life:false,ielts:false};
   try { const remembered=JSON.parse(localStorage.getItem(GROUPS_KEY)||'{}'); collapsedGroups={life:!!remembered.life,ielts:!!remembered.ielts}; } catch (_) {}
@@ -314,7 +318,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   let aiHealthState='checking';
   const aiStates={
     checking:['Đang kiểm tra kết nối AI…','Đang xác minh dịch vụ chấm câu của Speakwise.'],
-    ready:['AI đã sẵn sàng','Gemini đã được cấu hình. Bạn có thể gửi câu viết hoặc ghi âm để nhận phản hồi.'],
+    ready:['Worker đã nhận Gemini API key','Kết nối tới Gemini chỉ được xác nhận sau khi chấm một câu thực tế.'],
     missing:['AI chưa được kích hoạt','Cloudflare Worker đang hoạt động nhưng chưa nhận được GEMINI_API_KEY.'],
     unavailable:['Chưa xác minh được kết nối AI','Không kiểm tra được dịch vụ chấm. Bạn có thể thử lại hoặc kiểm tra Cloudflare Worker.'],
     unconfigured:['Chưa cấu hình dịch vụ AI','Mở cài đặt nâng cao bên dưới để nhập địa chỉ dịch vụ chấm.']
@@ -397,7 +401,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     else card=`<div class="study-counter">THẺ ${ui.deckAt+1} / ${ui.deck.length}</div><div class="flashcard" data-action="flip" role="button" tabindex="0" aria-label="Lật thẻ"><div class="flashcard-hint">${ui.flipped?'NGHĨA & VÍ DỤ':'ENGLISH COLLOCATION'}</div>${ui.flipped?`<h2 style="font-size:23px">${esc(current.meaning)}</h2><div class="flashcard-reveal">${esc(current.example)}</div>`:`<h2>${esc(current.phrase)}</h2>${current.ipa?`<p>${esc(current.ipa)}</p>`:''}`}<span class="flip-hint">${icon('refresh')} Bấm vào thẻ hoặc Space để lật</span></div><div class="study-actions">${ui.flipped?`<button class="rating-btn hard" data-action="rate" data-rating="hard">${icon('refresh')} Cần ôn lại · 1 ngày</button><button class="rating-btn good" data-action="rate" data-rating="good">${icon('checkCircle')} Nhớ được</button><button class="rating-btn easy" data-action="rate" data-rating="easy">${icon('sparkles')} Rất dễ</button>`:`<button class="btn btn-muted" data-action="speak" data-id="${esc(current.id)}">${icon('volume')} Nghe</button><button class="btn btn-primary" data-action="flip">${icon('refresh')} Xem nghĩa & ví dụ</button>`}</div>`;
     return practiceHeader('flashcards')+`<div class="practice-layout"><section class="practice-panel">${card}</section>${studySide()}</div>`}
   function shuffle(a){let copy=[...a];for(let i=copy.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[copy[i],copy[j]]=[copy[j],copy[i]]}return copy}
-  function nextQuiz(){cleanupAudio();ui.sentenceResult=null;ui.sentenceText='';ui.sentenceBusy=false;let pool=studyPool();let available=pool.filter(e=>!ui.quizSeen.includes(e.id));if(!available.length){ui.quizSeen=[];available=pool}if(!available.length){ui.quiz=null;return}const answer=available[Math.floor(Math.random()*available.length)];ui.quizSeen.push(answer.id);let distractors=shuffle(pool.filter(e=>e.id!==answer.id));if(distractors.length<3)distractors=shuffle([...distractors,...store.entries.filter(e=>e.id!==answer.id&&!distractors.includes(e))]);ui.quiz={answerId:answer.id,options:shuffle([answer,...distractors.slice(0,3)].map(e=>({id:e.id,phrase:e.phrase}))),selected:null,isCorrect:null};ui.showAnswer=false;ui.recallText=''}
+  function nextQuiz(){cleanupAudio();ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceText='';ui.sentenceBusy=false;let pool=studyPool();let available=pool.filter(e=>!ui.quizSeen.includes(e.id));if(!available.length){ui.quizSeen=[];available=pool}if(!available.length){ui.quiz=null;return}const answer=available[Math.floor(Math.random()*available.length)];ui.quizSeen.push(answer.id);let distractors=shuffle(pool.filter(e=>e.id!==answer.id));if(distractors.length<3)distractors=shuffle([...distractors,...store.entries.filter(e=>e.id!==answer.id&&!distractors.includes(e))]);ui.quiz={answerId:answer.id,options:shuffle([answer,...distractors.slice(0,3)].map(e=>({id:e.id,phrase:e.phrase}))),selected:null,isCorrect:null};ui.showAnswer=false;ui.recallText=''}
   function scoreLabel(score){return score>=85?'Rất tốt':score>=70?'Khá tốt':score>=50?'Cần cải thiện':'Cần luyện thêm'}
   function scoreTone(score){return score>=70?'good':score>=50?'fair':'weak'}
   function highlightAnswer(raw,highlights){
@@ -465,7 +469,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       <div class="sentence-modes" role="group" aria-label="Chọn hình thức đặt câu"><button type="button" class="${ui.sentenceMode==='write'?'active':''}" data-action="sentenceMode" data-mode="write">${icon('pen')} Viết câu</button><button type="button" class="${ui.sentenceMode==='speak'?'active':''}" data-action="sentenceMode" data-mode="speak">${icon('microphone')} Nói câu</button></div>
       ${ui.sentenceMode==='write'?`<div class="sentence-input-area"><label for="sentenceInput">Câu tiếng Anh của bạn</label><textarea id="sentenceInput" rows="4" placeholder="Write a meaningful sentence using the target collocation..." ${ui.sentenceBusy?'disabled':''}>${esc(ui.sentenceText)}</textarea><div class="sentence-actions"><p>Cần sử dụng collocation trong câu, không chỉ chép riêng cụm từ.</p><button class="btn btn-primary" data-action="evaluateSentence" ${ui.sentenceBusy?'disabled':''}>${icon('sparkles')} ${ui.sentenceBusy?'Đang chấm...':'Nhận AI feedback'}</button></div></div>`:
       `<div class="speech-workspace"><div class="speech-icon ${ui.recording?'recording':''}">${icon('microphone')}</div><strong>${ui.recording?'Đang ghi âm câu nói của bạn...':ui.audioBlob?'Đã ghi âm. Nghe lại hoặc gửi chấm.':'Sẵn sàng luyện nói'}</strong><p>${ui.recording?'Bấm Dừng ghi âm khi hoàn thành. Thời lượng tối đa 45 giây.':'Dùng microphone để nói câu tiếng Anh chứa collocation trên.'}</p><div class="speech-controls">${ui.recording?`<button type="button" class="btn btn-record stop" data-action="stopRecord">${icon('square')} Dừng ghi âm</button>`:`<button type="button" class="btn btn-record" data-action="startRecord">${icon('microphone')} ${ui.audioBlob?'Ghi âm lại':'Bắt đầu nói'}</button>`}${ui.audioBlob&&!ui.recording?`<button type="button" class="btn btn-primary" data-action="evaluateSentence" ${ui.sentenceBusy?'disabled':''}>${icon('sparkles')} ${ui.sentenceBusy?'Đang chấm...':'Nhận AI feedback'}</button>`:''}</div>${ui.audioUrl&&!ui.recording?`<audio controls class="speech-playback" src="${esc(ui.audioUrl)}" aria-label="Nghe lại bản ghi âm của bạn"></audio>`:''}<p class="small-note">Cần quyền microphone và kết nối HTTPS/localhost (tuỳ trình duyệt). Giọng nói được gửi tới AI khi bạn chọn chấm; không tự động tải lên.</p></div>`}
-      ${aiSettings()}${ui.sentenceBusy?`<div class="ai-pending" role="status">${icon('sparkles')} AI đang phân tích câu trả lời. Vui lòng đợi...</div>`:''}${feedbackPanel(ui.sentenceResult)}
+      ${aiSettings()}${ui.sentenceError?`<div class="ai-error-inline" role="alert"><strong>Không thể chấm câu lúc này</strong><p>${esc(ui.sentenceError)}</p><span>Bài làm và bản ghi âm vẫn được giữ lại để bạn có thể thử lại.</span></div>`:''}${ui.sentenceBusy?`<div class="ai-pending" role="status">${icon('sparkles')} AI đang phân tích câu trả lời. Vui lòng đợi...</div>`:''}${feedbackPanel(ui.sentenceResult)}
       <div class="sentence-nav"><button class="btn btn-muted" data-action="skipSentence">Bỏ qua cụm này</button></div>
       </div>`;
   }
@@ -522,7 +526,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     const mode=ui.sentenceMode;
     if(mode==='write'&&ui.sentenceText.trim().length<12){toast('Hãy viết ít nhất một câu có nghĩa trước khi chấm.');return}
     if(mode==='speak'&&(!ui.audioBlob||ui.audioBlob.size<1000)){toast('Hãy ghi âm câu nói trước khi gửi chấm.');return}
-    ui.sentenceBusy=true;ui.sentenceResult=null;render();
+    ui.sentenceBusy=true;ui.sentenceResult=null;ui.sentenceError=null;render();
     const controller=new AbortController();const timeout=setTimeout(()=>controller.abort(),60000);
     try{
       const payload={mode,phrase:current.phrase,meaning:current.meaning,topic:topic(current.topicId)?.name||'',language:'vi'};
@@ -530,14 +534,14 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       else {if(ui.audioBlob.size>6*1024*1024)throw new Error('File ghi âm quá lớn (giới hạn 6MB).');payload.audioBase64=await blobAsBase64(ui.audioBlob);payload.mimeType=ui.audioBlob.type.split(';')[0]||'audio/webm'}
       const response=await fetch(aiEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:controller.signal});
       let data;try{data=await response.json()}catch(_){throw new Error('Dịch vụ AI trả về dữ liệu không hợp lệ.')}
-      if(!response.ok)throw new Error(data.error||'Lỗi kết nối AI ('+response.status+').');
+      if(!response.ok)throw new Error([data.error||'Lỗi kết nối AI ('+response.status+').',data.detail?'Chi tiết Gemini: '+data.detail:'',data.help||''].filter(Boolean).join('\n'));
       const result=data.result||data;
       if(!Number.isFinite(Number(result.score))||!result.dimensions||typeof result!=='object')throw new Error('Dữ liệu điểm đánh giá chưa đúng định dạng.');
       if(mode!==ui.sentenceMode||current.id!==ui.quiz?.answerId)return;
-      ui.sentenceResult=result;
+      ui.sentenceResult=result;ui.sentenceError=null;
       if(Number(result.score)>=70){review(current.id,Number(result.score)>=90?'easy':'good')}else review(current.id,'hard');
       toast('Đã nhận phản hồi AI và cập nhật lịch ôn.');
-    }catch(err){toast(err.name==='AbortError'?'Dịch vụ AI phản hồi quá lâu, hãy thử lại.':String(err.message||'Lỗi khi chấm.'))}
+    }catch(err){ui.sentenceError=err.name==='AbortError'?'Dịch vụ AI phản hồi quá lâu. Vui lòng thử lại.':String(err.message||'Lỗi khi chấm.');toast('Không thể chấm: xem nguyên nhân bên dưới câu trả lời.');}
     finally{clearTimeout(timeout);ui.sentenceBusy=false;render()}
   }
   function render(){sidebar();header();document.getElementById('pageContent').innerHTML=ui.view==='library'?library():ui.view==='flashcards'?flashcards():quiz();if(ui.view==='library')libraryTable();renderIcons();}
@@ -576,8 +580,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'flip':ui.flipped=!ui.flipped;render();break;
       case 'rate':review(ui.deck[ui.deckAt],rating);ui.deckAt++;ui.flipped=false;render();break;
       case 'restart':cleanupAudio();ui.view==='flashcards'?makeDeck():(ui.quiz=null,ui.quizSeen=[],ui.quizCorrect=0,ui.quizTotal=0);render();break;
-      case 'quizMode':cleanupAudio();ui.quizMode=mode;ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;ui.sentenceResult=null;render();break;
-      case 'sentenceMode':cleanupAudio();ui.sentenceMode=mode;ui.sentenceResult=null;render();break;
+      case 'quizMode':cleanupAudio();ui.quizMode=mode;ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;ui.sentenceResult=null;ui.sentenceError=null;render();break;
+      case 'sentenceMode':cleanupAudio();ui.sentenceMode=mode;ui.sentenceResult=null;ui.sentenceError=null;render();break;
       case 'saveEndpoint':{
         const value=document.getElementById('aiEndpoint')?.value.trim()||'';
         if(value){
