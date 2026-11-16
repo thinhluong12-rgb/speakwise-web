@@ -37,7 +37,32 @@ export default {
    const c=new AbortController(),t=setTimeout(()=>c.abort(),50000);let response;
    try{response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{method:'POST',headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},body:JSON.stringify({contents:[{role:'user',parts}],generationConfig:{temperature:0.2,responseMimeType:'application/json',maxOutputTokens:2800}}),signal:c.signal})}finally{clearTimeout(t)}
    const payload=await response.json().catch(()=>({}));
-   if(!response.ok)return reply({error:'Gemini API không phản hồi thành công ('+response.status+').'},502,allowed);
+   if(!response.ok){
+     const upstreamError=payload?.error||{};
+     const status=response.status;
+     const upstreamCode=limit(upstreamError.status||'UNKNOWN',50).replace(/[^A-Z0-9_]/gi,'');
+     const reasonByStatus={
+       400:'Gemini từ chối nội dung yêu cầu. Hãy thử câu Viết trước, rồi kiểm tra định dạng âm thanh nếu chỉ chế độ Nói bị lỗi.',
+       401:'Xác thực Gemini thất bại. Kiểm tra API key trong Cloudflare Secrets.',
+       403:'API key chưa được cấp quyền, bị giới hạn, hoặc Gemini không hỗ trợ yêu cầu từ môi trường hiện tại.',
+       404:'Không tìm thấy model Gemini được cấu hình hoặc model không hỗ trợ API này.',
+       408:'Yêu cầu tới Gemini hết thời gian chờ.',
+       429:'Gemini đang giới hạn số yêu cầu hoặc đã hết quota. Kiểm tra Google AI Studio rồi thử lại sau.',
+       500:'Máy chủ Gemini gặp lỗi tạm thời.',
+       503:'Dịch vụ hoặc model Gemini đang quá tải hoặc tạm không khả dụng.'
+     };
+     const advice=reasonByStatus[status]||'Kiểm tra trạng thái API và cấu hình Gemini trong Google AI Studio.';
+     let detail=limit(upstreamError.message||'',320);
+     if(env.GEMINI_API_KEY)detail=detail.split(env.GEMINI_API_KEY).join('[REDACTED]');
+     detail=detail.replace(/AIza[A-Za-z0-9_-]{20,}/g,'[REDACTED]')
+       .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[email ẩn]')
+       .replace(/\s+/g,' ').trim();
+     console.warn('Speakwise Gemini upstream failed',JSON.stringify({status,upstreamCode,model}));
+     return reply({
+       error:'Gemini trả về lỗi '+status+(upstreamCode&&upstreamCode!=='UNKNOWN'?' ('+upstreamCode+')':'')+'.',
+       code:'GEMINI_'+status,upstreamStatus:status,detail,help:advice
+     },502,allowed);
+   }
    const text=(payload.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').replace(/^\`\`\`(?:json)?/i,'').replace(/\`\`\`$/,'').trim();
    let o;try{o=JSON.parse(text)}catch{return reply({error:'Phản hồi Gemini không đúng định dạng JSON.'},502,allowed)}
    const d=o.dimensions||{}, dims={targetUsage:score(d.targetUsage),grammar:score(d.grammar),naturalness:score(d.naturalness),clarity:score(d.clarity)};
