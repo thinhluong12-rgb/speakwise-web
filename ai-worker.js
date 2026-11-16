@@ -10,19 +10,72 @@ const score=x=>Number.isFinite(Number(x))?Math.max(0,Math.min(100,Math.round(Num
 export default {
  async fetch(req,env) {
   const url=new URL(req.url),path=url.pathname;
-  if(path!=='/evaluate'&&path!=='/health'){return env.ASSETS?.fetch(req)||new Response('Not found',{status:404})}
+  if(path!=='/evaluate'&&path!=='/health'&&path!=='/generate'){return env.ASSETS?.fetch(req)||new Response('Not found',{status:404})}
   const allowed=String(env.ALLOWED_ORIGIN||url.origin).replace(/\/$/,'');
   const incoming=req.headers.get('origin');
   if(incoming&&incoming!==allowed)return new Response('Origin not allowed',{status:403});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:headers(allowed)});
   if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY,model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash'},200,allowed);
-  if(path!=='/evaluate'||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
+  if(!['/evaluate','/generate'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
   if(!env.GEMINI_API_KEY)return reply({error:'AI chưa được cấu hình: thiếu GEMINI_API_KEY.'},503,allowed);
   try{
    if(Number(req.headers.get('content-length')||0)>9e6)return reply({error:'Ghi âm quá lớn.'},413,allowed);
    const raw=await req.text();
    if(raw.length>9e6)return reply({error:'Yêu cầu quá lớn.'},413,allowed);
    let b;try{b=JSON.parse(raw)}catch{return reply({error:'JSON không hợp lệ.'},400,allowed)}
+
+   if(path==='/generate'){
+     const topic=String(b.topic||'').trim().slice(0,90);
+     const level=String(b.level||'').toUpperCase();
+     const count=Number(b.count);
+     if(topic.length<2||!['A1','A2','B1','B2','C1','C2'].includes(level)||
+       !Number.isInteger(count)||count<1||count>20)
+       return reply({error:'Cần chọn topic, CEFR A1–C2 và số lượng 1–20.'},400,allowed);
+     const exclude=(Array.isArray(b.exclude)?b.exclude:[])
+       .slice(0,70).map(x=>limit(x,100)).filter(Boolean);
+     const model=env.GEMINI_MODEL||'gemini-3.5-flash-lite';
+     if(!/^[a-zA-Z0-9._-]+$/.test(model))return reply({error:'Model chưa hợp lệ.'},503,allowed);
+     const prompt='You design high-quality English speaking collocations for everyday life and IELTS Speaking. '+
+       'Produce '+count+' practical, natural English collocations (multiword lexical combinations, not single words) on the topic '+
+       JSON.stringify(topic)+' suitable for CEFR '+level+'. '+
+       'For each: exact collocation in English, accurate concise Vietnamese meaning, a natural complete example sentence in English, '+
+       'and a short usage note in Vietnamese (optional). Prefer widely transferable collocations. Avoid obscure language, duplicates, and: '+
+       JSON.stringify(exclude)+'. Do not fabricate IPA. Output ONLY a JSON object with entries array of objects '+
+       '{phrase:string,meaning:string,example:string,note:string}. All examples must actually use the collocation. '+
+       'This is a draft for teacher review; output no markdown.';
+     const c=new AbortController(),t=setTimeout(()=>c.abort(),33000);
+     let response,data;
+     try{response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{
+       method:'POST',
+       headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
+       body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],
+         generationConfig:{temperature:0.45,responseMimeType:'application/json',
+           maxOutputTokens:5500,thinkingConfig:{thinkingLevel:'minimal'}}}),
+       signal:c.signal
+     });data=await response.json().catch(()=>({}));}
+     catch(err){return reply({error:c.signal.aborted?'Tạo collocations quá thời gian chờ. Vui lòng thử số lượng ít hơn.':'Không kết nối được Gemini.',code:c.signal.aborted?'GENERATE_TIMEOUT':'GENERATE_NETWORK'},502,allowed)}
+     finally{clearTimeout(t)}
+     if(!response.ok){
+       let detail=limit(data?.error?.message||'',240);
+       if(env.GEMINI_API_KEY)detail=detail.split(env.GEMINI_API_KEY).join('[REDACTED]');
+       detail=detail.replace(/AIza[A-Za-z0-9_-]{20,}/g,'[REDACTED]');
+       return reply({error:'Gemini không tạo được collocations ('+response.status+').',detail},502,allowed);
+     }
+     const raw=(data.candidates?.[0]?.content?.parts||[]).map(x=>x.text||'').join('');
+     let parsed;try{parsed=JSON.parse(raw)}catch(_){return reply({error:'Gemini trả về JSON không hợp lệ, vui lòng thử lại.'},502,allowed)}
+     if(!Array.isArray(parsed.entries))return reply({error:'Gemini không trả về danh sách collocations.'},502,allowed);
+     const unique=new Set();
+     const entries=parsed.entries.slice(0,count).map(x=>({
+       phrase:limit(x?.phrase,180).trim(),meaning:limit(x?.meaning,240).trim(),
+       example:limit(x?.example,1000).trim(),note:limit(x?.note,500).trim()
+     })).filter(x=>{
+       const key=x.phrase.toLowerCase();
+       if(x.phrase.length<3||!x.meaning||!x.example||!x.phrase.includes(' ')||unique.has(key))return false;
+       unique.add(key);return true;
+     });
+     if(!entries.length)return reply({error:'Không có collocations hợp lệ, hãy thử lại.'},502,allowed);
+     return reply({entries,modelUsed:model,requested:count,generated:entries.length},200,allowed);
+   }
    const mode=b.mode;
    if(!['write','speak'].includes(mode)||typeof b.phrase!=='string'||!b.phrase.trim()||b.phrase.length>200)return reply({error:'Thiếu collocation hoặc mode.'},400,allowed);
    if(mode==='write'&&(!b.answer||typeof b.answer!=='string'||b.answer.trim().length<12))return reply({error:'Hãy nhập câu đủ nghĩa.'},400,allowed);
