@@ -81,8 +81,11 @@
      const e={id:row.id,date:row.activity_day,entryId:row.entry_id,action:row.action,rating:'synced'};
      if(!known.has(e.id)){st.reviewEvents.push(e);known.add(e.id)}
    }
-   const mistakeMap=new Map((st.mistakes||[]).map(m=>[m.id,m]));
+   const tombstones=new Set([...(st.deletedMistakeIds||[]),...(prefs.data?.data?.deletedMistakeIds||[])]);
+   st.deletedMistakeIds=[...tombstones];
+   const mistakeMap=new Map((st.mistakes||[]).filter(m=>!tombstones.has(m.id)).map(m=>[m.id,m]));
    for(const row of mistakes.data||[]){
+     if(tombstones.has(row.id))continue;
      const converted={id:row.id,entryId:row.entry_id,mode:row.mode,
        originalText:row.original_text,revisedText:row.suggested_revision,
        note:row.note,status:row.status,createdAt:row.created_at,updatedAt:row.updated_at};
@@ -128,7 +131,12 @@
      activity_day:e.date
    })).filter(e=>/^\d{4}-\d{2}-\d{2}$/.test(e.activity_day)).slice(-1000);
    if(activities.length){const {error}=await api.from('speakwise_activity').upsert(activities,{onConflict:'id'});if(error)throw error;}
-   const mistakes=(st.mistakes||[]).map(m=>({
+   const deletedMistakes=[...new Set(st.deletedMistakeIds||[])].slice(-400);
+   if(deletedMistakes.length){
+     const {error}=await api.from('speakwise_mistakes').delete().eq('user_id',user.id).in('id',deletedMistakes);
+     if(error)throw error;
+   }
+   const mistakes=(st.mistakes||[]).filter(m=>!deletedMistakes.includes(m.id)).map(m=>({
       id:m.id,user_id:user.id,
       entry_id:st.entries.some(e=>e.id===m.entryId)?m.entryId:null,
       mode:m.mode==='speak'?'speak':'write',
@@ -140,7 +148,8 @@
    })).filter(m=>m.id&&m.original_text).slice(0,400);
    if(mistakes.length){const {error}=await api.from('speakwise_mistakes').upsert(mistakes,{onConflict:'id'});if(error)throw error;}
    const preferences={user_id:user.id,data:{
-     settings:st.settings||{},lastPractice:st.lastPractice||null,learningJourney:st.learningJourney||null
+     settings:st.settings||{},lastPractice:st.lastPractice||null,learningJourney:st.learningJourney||null,
+     deletedMistakeIds:[...new Set(st.deletedMistakeIds||[])].slice(-400)
    }};
    const prefResult=await api.from('speakwise_preferences').upsert(preferences,{onConflict:'user_id'});
    if(prefResult.error)throw prefResult.error;
