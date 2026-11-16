@@ -208,44 +208,54 @@ body{font-size:15px;line-height:1.62}
 .sw-sync-modal input{display:block;padding:12px;border:1px solid #cfdfdf;border-radius:9px;width:100%;margin:7px 0 12px}
 .sw-sync-close{position:absolute;right:13px;top:9px;background:none;border:0;color:#67818b;font-size:27px}
 @media(max-width:700px){#syncButton{font-size:11px}}
+
+.sw-welcome{background:linear-gradient(115deg,#126e6a,#329f90);padding:30px;border-radius:20px;color:white;display:flex;align-items:center;justify-content:space-between;gap:15px;margin-bottom:20px}
+.sw-welcome h2{font-size:30px;margin:8px 0;color:white}.sw-welcome p{color:#dcf5ee}.sw-welcome small{font-weight:800;letter-spacing:1.4px;color:#d5f4e9}
+.sw-welcome button{background:white;color:#196c66;border:0}
+.sw-stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:20px}
+.sw-stat{border:1px solid #dfece8;border-radius:16px;padding:18px;background:white}.sw-stat>span{font-size:25px;display:block;margin-bottom:8px}.sw-stat strong{font-size:31px;color:#1a5754}.sw-stat strong small{font-size:13px;color:#819797}.sw-stat p{font-size:13px;color:#769090;margin:7px 0}
+.sw-home-grid{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}.sw-home-panel{background:white;border:1px solid #e0ece7;border-radius:18px;padding:23px;min-height:255px}.sw-home-panel h3{font-size:19px;color:#24575b;margin:0 0 14px}
+.sw-small{font-size:12px;color:#89999d;line-height:1.6}
+.sw-week{display:flex;justify-content:space-around;gap:10px;height:165px;align-items:end}
+.sw-bar-day{flex:1;text-align:center;font-size:11px;color:#608580}.sw-bar-day>div{height:110px;max-width:45px;margin:6px auto;background:#e8f4f0;border-radius:9px;display:flex;align-items:end;overflow:hidden}
+.sw-bar-day>div>i{width:100%;background:#229d8c;border-radius:9px;display:block;min-height:4px}
+.sw-weak{display:block;width:100%;padding:10px;border:1px solid #e2eeee;border-radius:10px;background:#fafdfc;text-align:left;margin-bottom:7px;cursor:pointer}.sw-weak b{display:block;font-size:14px;color:#255b59}.sw-weak small{display:block;margin-top:2px;color:#819696}
+.sw-topic-grid{margin-bottom:20px}.sw-topic-grid .topic-tile p{display:none}
+@media(max-width:1000px){.sw-stats{grid-template-columns:repeat(2,1fr)}.sw-home-grid{grid-template-columns:1fr}}
+@media(max-width:650px){.sw-welcome{display:block;padding:22px}.sw-welcome button{margin-top:10px}.sw-stat{padding:13px}.sw-stat strong{font-size:27px}}
+
 </style>
 </head>
 <body>
   <div class="app-shell" id="appShell">
     <aside class="sidebar" id="sidebar">
-      <a class="brand" href="#library" id="brandLink" aria-label="Speakwise Home">
+      <a class="brand" href="#home" id="brandLink" aria-label="Speakwise Home">
         <div class="brand-mark"><span>sp</span><span class="brand-spark">✦</span></div>
         <div class="brand-label"><strong>Speakwise<span class="brand-dot">.</span></strong><small>COLLOCATION STUDIO</small></div>
       </a>
       <div class="sidebar-menu-label">KHÔNG GIAN HỌC</div>
       <nav class="main-nav" aria-label="Điều hướng chính">
-        <button class="nav-item active" data-nav="library"><span data-icon="layout-grid"></span> Thư viện collocations <span class="nav-chevron">›</span></button>
-        <button class="nav-item" data-nav="flashcards"><span data-icon="layers"></span> Flashcards <span class="nav-mini">Ôn</span></button>
-        <button class="nav-item" data-nav="quiz"><span data-icon="brain"></span> Kiểm tra ghi nhớ <span class="nav-mini">Quiz</span></button>
+        <button class="nav-item active" data-nav="home"><span data-icon="layout-grid"></span> Trang chủ</button>
+        <button class="nav-item" data-nav="flashcards"><span data-icon="layers"></span> Flashcards</button>
+        <button class="nav-item" data-nav="memory"><span data-icon="brain"></span> Ghi nhớ</button>
+        <button class="nav-item" data-nav="apply"><span style="font-size:19px">✍️</span> Ứng dụng</button>
+        <button class="nav-item" data-nav="topics"><span data-icon="bookOpen"></span> Topic Collocations</button>
       </nav>
-      <div class="sidebar-line"></div>
-      <div class="sidebar-menu-label with-sub">DANH MỤC CHỦ ĐỀ <span id="topicTotal">09</span></div>
-      <div id="sidebarTopics" class="sidebar-topic-groups"></div>
-      <div class="side-bottom">
-        <div class="side-tip"><span class="tip-icon" data-icon="lightbulb"></span><div><b>Học qua ngữ cảnh</b><p>Ghi nhớ cụm từ bằng ví dụ của chính bạn, không học vẹt.</p></div></div>
-        <div class="side-foot"><span class="side-status"></span> Dữ liệu lưu trên thiết bị <span class="side-status-sub">v2.0</span></div>
-      </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
         <div class="mobile-logo"><button class="icon-button menu-button" id="menuToggle" aria-label="Mở menu"><span data-icon="menu"></span></button><b>Speakwise<span class="brand-dot">.</span></b></div>
-        <div class="breadcrumb" id="breadcrumb"><span>Không gian học</span><span class="crumb-chevron">/</span><strong>Thư viện collocations</strong></div>
+        <div class="breadcrumb" id="breadcrumb"><span>Không gian học</span><span class="crumb-chevron">/</span><strong>Trang chủ</strong></div>
         <div class="topbar-actions">
           <button class="btn btn-muted btn-compact" id="syncButton" type="button">Đồng bộ</button>
-          <button class="btn btn-muted btn-compact" id="importBtn"><span data-icon="upload"></span> <span class="desktop-text">Nhập dữ liệu</span></button>
-          <button class="btn btn-muted btn-compact" id="exportBtn"><span data-icon="download"></span> <span class="desktop-text">Xuất bản sao</span></button>
+
           <button class="btn btn-primary" id="addBtn"><span data-icon="plus"></span><span>Thêm cụm từ</span></button>
           <input type="file" id="importFile" accept=".json,application/json" hidden/>
         </div>
       </header>
       <div class="page-content" id="pageContent"></div>
-      <footer class="page-footer"><span>Speakwise · Learn phrases. Speak naturally.</span><span>Đề xuất quy trình: học → vận dụng → ôn lại</span></footer>
+
     </main>
   </div>
   <div class="mobile-shade" id="mobileShade" aria-hidden="true"></div>
@@ -303,9 +313,9 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function readSaved(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){return {}}}
   function combine(seedList, userList, key){const map = new Map((seedList||[]).map(e=>[e[key],e]));for(const e of (userList||[])){if(e && e[key])map.set(e[key],{...(map.get(e[key])||{}),...e})}return [...map.values()]}
   const saved=readSaved();
-  const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[]};
+  const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[]};
   store.entries=store.entries.filter(e=>!store.deletedIds.includes(e.id));
-  const ui={view:'library',section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false};
+  const ui={view:'home',section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false};
   const GROUPS_KEY='speakwise-collapsed-groups-v3';
   let collapsedGroups={life:false,ielts:false};
   try { const remembered=JSON.parse(localStorage.getItem(GROUPS_KEY)||'{}'); collapsedGroups={life:!!remembered.life,ielts:!!remembered.ielts}; } catch (_) {}
@@ -359,22 +369,36 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   const toastHost=document.getElementById('toastHost');
   function toast(message){const el=document.createElement('div');el.className='toast';el.innerHTML=icon('checkCircle')+`<span>${esc(message)}</span>`;toastHost.append(el);setTimeout(()=>el.remove(),4100)}
   function renderIcons(){document.querySelectorAll('[data-icon]').forEach(el=>{el.innerHTML=icon(el.dataset.icon)})}
-  function sidebar(){
-    document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===ui.view));
-    document.getElementById('topicTotal').textContent=String(store.topics.length).padStart(2,'0');
-    document.getElementById('sidebarTopics').innerHTML=['life','ielts'].map(section=>{
-      const topics=store.topics.filter(t=>t.section===section);
-      const isCollapsed=collapsedGroups[section];
-      return `<div class="topic-group ${isCollapsed?'collapsed':''}"><button type="button" class="group-header ${section==='ielts'?'ielts':''}" data-action="toggleGroup" data-section="${section}" aria-expanded="${!isCollapsed}" aria-controls="topics-${section}" title="${isCollapsed?'Mở rộng':'Thu gọn'} nhóm ${sectionName(section)}"><span class="group-icon">${icon(section==='life'?'sun':'graduation')}</span><span class="group-name">${sectionName(section)}</span><span class="count">${topics.reduce((a,t)=>a+store.entries.filter(e=>e.topicId===t.id).length,0)}</span><span class="group-caret" aria-hidden="true">${icon('chevron')}</span></button><div class="topic-links" id="topics-${section}" ${isCollapsed?'hidden':''}>${topics.map(t=>`<button class="topic-link ${ui.topic===t.id?'active':''}" data-action="topic" data-topic="${esc(t.id)}"><span>${esc(t.vi)}</span><span class="topic-count">${store.entries.filter(e=>e.topicId===t.id).length}</span></button>`).join('')}</div></div>`;
-    }).join('');
-  }
-  function header(){const b=document.getElementById('breadcrumb');const label=ui.view==='library'?'Thư viện collocations':ui.view==='flashcards'?'Flashcards':'Kiểm tra ghi nhớ';b.innerHTML=`<span>Không gian học</span><span class="crumb-chevron">/</span><strong>${label}</strong>`}
-  function intro(title,subtitle,eyebrow='SPEAKING COLLOCATIONS'){
-    return `<div class="intro"><div><div class="eyebrow">${eyebrow}</div><h1 class="page-title">${title}</h1><p class="page-subtitle">${subtitle}</p></div><div class="intro-pill">${icon('shield')} Dữ liệu học tập cá nhân hoá</div></div>`
+  function sidebar(){document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===ui.view))}
+  const navNames={home:'Trang chủ',flashcards:'Flashcards',memory:'Ghi nhớ',apply:'Ứng dụng',topics:'Topic Collocations'};
+  function header(){document.getElementById('breadcrumb').innerHTML='<strong>'+navNames[ui.view]+'</strong>'}
+  function intro(title,subtitle='',eyebrow=''){
+    return '<div class="intro"><div>'+(eyebrow?'<div class="eyebrow">'+esc(eyebrow)+'</div>':'')+'<h1 class="page-title">'+esc(title)+'</h1>'+(subtitle?'<p class="page-subtitle">'+esc(subtitle)+'</p>':'')+'</div></div>';
   }
   function hero(){return `<div class="hero"><div class="hero-content"><div class="hero-tag">${icon('sparkles')} YOUR SPEAKING LIBRARY</div><h2>Học theo ngữ cảnh.<br/>Diễn đạt tự nhiên hơn mỗi ngày.</h2><p>Lưu lại những collocations đã luyện, xem ví dụ thực tế và ôn lại đúng lúc — không cần học thuộc cả bài mẫu.</p></div><div class="hero-art" aria-hidden="true"><div class="hero-circle-one"></div><div class="hero-circle-two"></div><div class="hero-card-float"><strong>learn in context ✦</strong><p>Speak clearly & confidently</p></div><div class="hero-chip">make it stick ↗</div></div></div>`}
   function stats(){const configs=[['Tổng cụm từ',store.entries.length,'bookOpen',''],['Đã ôn ít nhất 1 lần',reviewedCount(),'checkCircle','blue'],['Đã vững',masteredCount(),'sparkles','amber'],['Đến hạn ôn',dueCount(),'clock','rose']];return `<div class="stats">${configs.map(([l,v,ic,cl])=>`<div class="stat"><div><div class="stat-label">${l}</div><div class="stat-value">${v}</div></div><div class="stat-icon ${cl}">${icon(ic)}</div></div>`).join('')}</div>`}
-  function topicGrid(){const arr=store.topics.filter(t=>ui.section==='all'||t.section===ui.section);return `<div class="section-head"><div><h3>Khám phá theo chủ đề</h3><p>Chọn một topic để xem những cụm từ liên quan</p></div></div><div class="section-tabs" style="margin-bottom:13px"><button class="segment ${ui.section==='all'?'active':''}" data-action="section" data-section="all">Tất cả</button><button class="segment ${ui.section==='life'?'active':''}" data-action="section" data-section="life">${icon('sun')} Daily Life</button><button class="segment ${ui.section==='ielts'?'active':''}" data-action="section" data-section="ielts">${icon('graduation')} IELTS Speaking</button></div><div class="topic-grid">${arr.map(t=>{const cnt=store.entries.filter(e=>e.topicId===t.id).length;return `<button class="topic-tile ${t.section==='ielts'?'blue':''} ${ui.topic===t.id?'active':''}" data-action="topic" data-topic="${esc(t.id)}"><span class="topic-symbol ${t.section==='ielts'?'blue':''}">${icon(t.icon||'book')}</span><span><strong>${esc(t.name)}</strong><p>${esc(t.vi)}</p><small>${cnt} collocations</small></span></button>`}).join('')}</div>`}
+  function topicGrid(){return '<div class="topic-grid sw-topic-grid">'+store.topics.map(t=>
+    '<button class="topic-tile" data-action="topic" data-topic="'+esc(t.id)+'"><span class="topic-symbol">'+icon(t.icon||'book')+'</span><span><strong>'+esc(t.name)+'</strong><small>'+
+    store.entries.filter(e=>e.topicId===t.id).length+' collocations</small></span></button>').join('')+'</div>'}
+  function studyDates(){const d=new Set(store.activityDates||[]);for(const p of Object.values(store.progress))if(p.lastReviewed)d.add(p.lastReviewed);return d}
+  function studyStreak(){const dates=studyDates(),day=new Date();
+    if(!dates.has(localDay(day))){day.setDate(day.getDate()-1);if(!dates.has(localDay(day)))return 0}
+    let count=0;for(;dates.has(localDay(day))&&count<10000;day.setDate(day.getDate()-1))count++;
+    return count;
+  }
+  function home(){
+    const days=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return localDay(d)});
+    const count=Object.fromEntries(days.map(d=>[d,0]));
+    for(const e of store.reviewEvents||[])if(Object.hasOwn(count,e.date))count[e.date]++;
+    const max=Math.max(1,...Object.values(count));
+    const weak=store.entries.filter(e=>[1,2].includes(Number(progress(e.id).level))).slice(0,5);
+    const stat=[[studyStreak(),'ngày','🔥','Streak học tập'],[reviewedCount(),'/'+store.entries.length,'📚','Đã ôn ít nhất 1 lần'],[masteredCount(),'cụm','✨','Ghi nhớ tốt'],[dueCount(),'cụm','⏰','Đến hạn ôn']];
+    return intro('Tổng quan học tập','Theo dõi hoạt động và lựa chọn bài luyện hôm nay.')+
+      '<div class="sw-welcome"><div><small>YOUR LEARNING SPACE</small><h2>Make every phrase count.</h2><p>Luyện tập đều đặn, ghi nhớ sâu và vận dụng tự nhiên.</p></div><button class="btn btn-primary" data-nav="flashcards">Tiếp tục học</button></div>'+
+      '<div class="sw-stats">'+stat.map(x=>'<article class="sw-stat"><span>'+x[2]+'</span><strong>'+x[0]+' <small>'+x[1]+'</small></strong><p>'+x[3]+'</p></article>').join('')+'</div>'+
+      '<div class="sw-home-grid"><section class="sw-home-panel"><h3>Hoạt động 7 ngày qua</h3><div class="sw-week">'+days.map(d=>{const date=new Date(d+'T12:00:00');return '<div class="sw-bar-day"><b>'+count[d]+'</b><div><i style="height:'+Math.max(4,Math.round(count[d]/max*100))+'%"></i></div><small>'+['CN','T2','T3','T4','T5','T6','T7'][date.getDay()]+'</small></div>'}).join('')+'</div><p class="sw-small">Streak chỉ tăng vào ngày có hoạt động ôn tập, không tính khi chỉ mở web.</p></section>'+
+      '<section class="sw-home-panel"><h3>Các cụm cần củng cố</h3>'+(weak.length?weak.map(e=>'<button class="sw-weak" data-action="detail" data-id="'+esc(e.id)+'"><b>'+esc(e.phrase)+'</b><small>'+esc(e.meaning)+'</small></button>').join(''):'<p class="sw-small">Chưa có cụm cần củng cố. Hãy hoàn thành lượt Flashcards đầu tiên.</p>')+'<button class="btn btn-muted" data-nav="memory">Luyện ghi nhớ →</button></section></div>';
+  }
   function filterEntries(){return store.entries.filter(e=>{
     const t=topic(e.topicId);if(!t)return false;
     if(ui.section!=='all'&&t.section!==ui.section)return false;
@@ -386,7 +410,12 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     if(ui.filter==='new'&&progress(e.id).level>0)return false;
     const q=ui.query.toLocaleLowerCase('vi').trim();return !q||[e.phrase,e.meaning,e.example,e.note||'',t.vi,t.name].some(s=>String(s).toLocaleLowerCase('vi').includes(q))
   })}
-  function library(){return intro('Thư viện Speaking Collocations','Hệ thống hoá từ vựng theo chủ đề. Học đúng cụm, dùng đúng ngữ cảnh.')+hero()+stats()+topicGrid()+`<section class="library-card"><div class="library-toolbar"><div class="library-toolbar-title"><strong>${ui.topic==='all'?'Danh sách collocations':esc(topic(ui.topic)?.name||'Danh sách collocations')}</strong><small><span id="filteredCount">${filterEntries().length}</span> cụm từ phù hợp</small></div><div class="filters"><div class="search-box">${icon('search')}<input aria-label="Tìm cụm từ" id="searchInput" autocomplete="off" placeholder="Tìm collocation, nghĩa, ví dụ..." value="${esc(ui.query)}" /></div><select aria-label="Lọc tiến độ" class="filter-select" id="statusFilter"><option value="all" ${ui.filter==='all'?'selected':''}>Tất cả</option><option value="latest" ${ui.filter==='latest'?'selected':''}>Mới cập nhật</option><option value="new" ${ui.filter==='new'?'selected':''}>Chưa ôn</option><option value="learned" ${ui.filter==='learned'?'selected':''}>Đã ôn</option><option value="star" ${ui.filter==='star'?'selected':''}>Yêu thích</option><option value="due" ${ui.filter==='due'?'selected':''}>Đến hạn ôn</option></select></div></div><div id="libraryTableWrap"></div></section>`}
+  function library(){return intro('Topic Collocations','Tìm kiếm, chọn chủ đề và quản lý collocations.')+topicGrid()+
+      '<section class="library-card"><div class="library-toolbar"><div class="library-toolbar-title"><strong>'+
+      (ui.topic==='all'?'All Collocations':esc(topic(ui.topic)?.name||'All Collocations'))+
+      '</strong><small><span id="filteredCount">'+filterEntries().length+'</span> collocations</small></div><div class="filters"><div class="search-box">'+icon('search')+
+      '<input aria-label="Tìm cụm từ" id="searchInput" autocomplete="off" placeholder="Tìm cụm từ, nghĩa, ví dụ..." value="'+esc(ui.query)+'"/></div>'+
+      '<select aria-label="Lọc tiến độ" class="filter-select" id="statusFilter"><option value="all">Tất cả</option><option value="new">Chưa ôn</option><option value="learned">Đã ôn</option><option value="star">Yêu thích</option><option value="due">Đến hạn ôn</option></select><button class="btn btn-muted" data-action="clearFilters">Tất cả topic</button></div></div><div id="libraryTableWrap"></div></section>'}
   function libraryTable(){const arr=filterEntries();const pages=Math.max(1,Math.ceil(arr.length/ui.perPage));ui.page=Math.min(Math.max(ui.page,1),pages);const sub=arr.slice((ui.page-1)*ui.perPage,ui.page*ui.perPage);const wrap=document.getElementById('libraryTableWrap');if(!wrap)return;const count=document.getElementById('filteredCount');if(count)count.textContent=arr.length;
     if(!sub.length){wrap.innerHTML=`<div class="empty-state"><div class="empty-icon">${icon('search')}</div><b>Chưa tìm thấy cụm từ phù hợp</b><p>Thử thay đổi bộ lọc hoặc thêm collocation mới vào thư viện.</p><div style="margin-top:16px"><button class="btn btn-light-green" data-action="clearFilters">Xoá bộ lọc</button></div></div>`;return}
     wrap.innerHTML=`<div style="overflow-x:auto"><table class="library-table"><thead><tr><th>Collocation / IPA</th><th>Nghĩa tiếng Việt</th><th>Ví dụ trong ngữ cảnh</th><th style="text-align:right">Thao tác</th></tr></thead><tbody>${sub.map(e=>{const t=topic(e.topicId)||{};return `<tr data-action="detail" data-id="${esc(e.id)}" tabindex="0" aria-label="Xem ${esc(e.phrase)}"><td><div class="phrase-cell">${esc(e.phrase)}</div>${e.ipa?`<div class="phrase-ipa">${esc(e.ipa)}</div>`:''}<span class="tag ${t.section==='ielts'?'blue':''}">${esc(t.name||'')}</span></td><td><div class="meaning-cell">${esc(e.meaning)}</div></td><td><div class="example-cell">${esc(e.example)}</div></td><td><div class="action-group"><button class="icon-button" title="Nghe phát âm" aria-label="Phát âm ${esc(e.phrase)}" data-action="speak" data-id="${esc(e.id)}">${icon('volume')}</button><button class="icon-button ${progress(e.id).starred?'is-on':''}" title="Đánh dấu yêu thích" aria-label="Yêu thích ${esc(e.phrase)}" data-action="star" data-id="${esc(e.id)}">${icon('star')}</button></div></td></tr>`}).join('')}</tbody></table></div><div class="table-bottom"><span>Hiển thị ${(ui.page-1)*ui.perPage+1}–${Math.min(ui.page*ui.perPage,arr.length)} / ${arr.length} cụm từ</span><div class="pagination"><button data-action="page" data-page="${ui.page-1}" ${ui.page===1?'disabled':''}>‹ Trước</button><button data-action="page" data-page="${ui.page+1}" ${ui.page===pages?'disabled':''}>Tiếp ›</button></div></div>`;
@@ -544,7 +573,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     }catch(err){ui.sentenceError=err.name==='AbortError'?'Dịch vụ AI phản hồi quá lâu. Vui lòng thử lại.':String(err.message||'Lỗi khi chấm.');toast('Không thể chấm: xem nguyên nhân bên dưới câu trả lời.');}
     finally{clearTimeout(timeout);ui.sentenceBusy=false;render()}
   }
-  function render(){sidebar();header();document.getElementById('pageContent').innerHTML=ui.view==='library'?library():ui.view==='flashcards'?flashcards():quiz();if(ui.view==='library')libraryTable();renderIcons();}
+  function render(){sidebar();header();document.getElementById('pageContent').innerHTML=ui.view==='home'?home():ui.view==='topics'?library():ui.view==='flashcards'?flashcards():quiz();if(ui.view==='topics')libraryTable();renderIcons();}
   function openDrawer(id){const e=store.entries.find(e=>e.id===id);if(!e)return;ui.drawer=id;const t=topic(e.topicId)||{};const p=progress(id);document.getElementById('drawerHost').innerHTML=`<div class="drawer-overlay" data-action="closeDrawer"></div><div class="drawer" role="dialog" aria-modal="true" aria-label="Thông tin collocation"><div class="drawer-head"><span class="eyebrow">COLLOCATION DETAILS</span><button class="icon-button" data-action="closeDrawer" aria-label="Đóng">${icon('close')}</button></div><div class="drawer-body"><div class="drawer-kicker">${t.section==='life'?'DAILY LIFE':'IELTS SPEAKING'} · ${esc(t.name||'')}</div><h2 class="drawer-phrase">${esc(e.phrase)}</h2>${e.ipa?`<div class="drawer-ipa">${esc(e.ipa)}</div>`:''}<div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-light-green" data-action="speak" data-id="${esc(id)}">${icon('volume')} Nghe phát âm</button><button class="btn btn-muted" data-action="star" data-id="${esc(id)}">${icon('star')} ${p.starred?'Bỏ yêu thích':'Yêu thích'}</button></div><div class="drawer-info"><div class="drawer-info-label">${icon('bookOpen')} Nghĩa tiếng Việt</div><p>${esc(e.meaning)}</p></div><div class="drawer-info"><div class="drawer-info-label">${icon('sparkles')} Ví dụ sử dụng</div><div class="example-block">${esc(e.example)}</div></div>${e.note?`<div class="drawer-info"><div class="drawer-info-label">${icon('lightbulb')} Lưu ý dùng từ</div><p>${esc(e.note)}</p></div>`:''}<div class="drawer-info"><div class="drawer-info-label">${icon('clock')} Tiến độ học</div><p>${p.level?`Đã ôn ${p.reviews||1} lần · Ôn tiếp: ${esc(p.nextReview||'Chưa xác định')}`:'Chưa ôn tập'} </p><p class="muted-small" style="margin-top:7px">Nguồn: ${esc(e.source||'Thư viện cá nhân')} · Ngày thêm: ${esc(e.addedAt||'Chưa rõ')}</p></div><div class="drawer-footer"><button class="btn btn-muted" data-action="edit" data-id="${esc(id)}">${icon('edit')} Chỉnh sửa</button><button class="btn btn-danger" data-action="delete" data-id="${esc(id)}">${icon('trash')} Xoá</button><button class="btn btn-primary" data-action="closeDrawer">Đóng</button></div></div></div>`;}
   function closeDrawer(){ui.drawer=null;document.getElementById('drawerHost').innerHTML=''}
   function entryModal(id=null){const e=id?store.entries.find(x=>x.id===id):null;const selectedTopic=e?.topicId||(ui.topic!=='all'?ui.topic:store.topics[0]?.id)||'';const section=topic(selectedTopic)?.section||'life';ui.modal={id:id||null};document.getElementById('modalHost').innerHTML=`<div class="modal-overlay" data-action="closeModal"></div><div class="modal" role="dialog" aria-modal="true" aria-label="${e?'Sửa':'Thêm'} cụm từ"><div class="modal-head"><h2>${e?'Chỉnh sửa collocation':'Thêm collocation mới'}</h2><button class="icon-button" data-action="closeModal" aria-label="Đóng">${icon('close')}</button></div><form id="entryForm"><div class="modal-body"><div class="form-stack"><div class="form-row"><div class="field"><label for="entrySection">Nhóm lớn</label><select id="entrySection" name="section"><option value="life" ${section==='life'?'selected':''}>Daily Life</option><option value="ielts" ${section==='ielts'?'selected':''}>IELTS Speaking</option></select></div><div class="field"><label for="entryTopic">Topic</label><select id="entryTopic" name="topicId"></select></div></div><div class="form-row"><div class="field"><label for="entryPhrase">Collocation / Idiom *</label><input id="entryPhrase" name="phrase" required maxlength="180" placeholder="e.g. meet tight deadlines" value="${esc(e?.phrase||'')}"/></div><div class="field"><label for="entryIpa">Phiên âm IPA (tuỳ chọn)</label><input id="entryIpa" name="ipa" maxlength="200" placeholder="/miːt taɪt ˈdedlaɪnz/" value="${esc(e?.ipa||'')}"/></div></div><div class="field"><label for="entryMeaning">Nghĩa tiếng Việt *</label><input id="entryMeaning" name="meaning" required maxlength="240" placeholder="đáp ứng thời hạn gấp" value="${esc(e?.meaning||'')}"/></div><div class="field"><label for="entryExample">Câu ví dụ tiếng Anh *</label><textarea id="entryExample" name="example" required maxlength="1000" placeholder="I often have to meet tight deadlines at work.">${esc(e?.example||'')}</textarea></div><div class="field"><label for="entryNote">Ghi chú cách dùng / lỗi thường gặp</label><textarea id="entryNote" name="note" maxlength="1000" placeholder="e.g. meet deadlines; complete tasks">${esc(e?.note||'')}</textarea></div><div class="form-help">Từ mới sẽ được lưu trong trình duyệt này. Để chuyển sang máy khác hoặc cập nhật dữ liệu từ các buổi học, dùng Xuất / Nhập JSON.</div></div></div><div class="modal-footer"><button class="btn btn-muted" type="button" data-action="closeModal">Huỷ</button><button class="btn btn-primary" type="submit">${icon('checkCircle')} ${e?'Lưu thay đổi':'Thêm vào thư viện'}</button></div></form></div>`;updateFormTopics(selectedTopic);document.getElementById('entryPhrase').focus();}
@@ -553,13 +582,13 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function saveEntry(form){const fd=new FormData(form);const val=k=>String(fd.get(k)||'').trim();const phrase=val('phrase'),meaning=val('meaning'),example=val('example'),topicId=val('topicId');if(!phrase||!meaning||!example||!topic(topicId)){toast('Vui lòng nhập đủ cụm từ, nghĩa, ví dụ và topic.');return}let id=ui.modal?.id;if(!id){const duplicate=store.entries.find(e=>e.topicId===topicId&&e.phrase.toLowerCase()===phrase.toLowerCase());if(duplicate){toast('Cụm từ này đã tồn tại trong topic.');return}id='custom-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,6)}const obj={id,phrase,ipa:val('ipa'),meaning,example,note:val('note'),topicId,source:ui.modal?.id?(store.entries.find(e=>e.id===id)?.source||'Tự bổ sung'):'Tự bổ sung',addedAt:localDay()};const idx=store.entries.findIndex(e=>e.id===id);if(idx>=0)store.entries[idx]={...store.entries[idx],...obj};else store.entries.push(obj);save();closeModal();closeDrawer();render();toast(idx>=0?'Đã cập nhật cụm từ.':'Đã thêm cụm từ vào thư viện.')}
   function speak(id){const e=store.entries.find(e=>e.id===id);if(!e)return;if(!window.speechSynthesis){toast('Trình duyệt này chưa hỗ trợ phát âm.');return}speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(e.phrase.replace(/something/gi,'the task'));u.lang='en-GB';u.rate=.86;const voices=speechSynthesis.getVoices();const preferred=voices.find(v=>v.lang.toLowerCase().startsWith('en-gb'))||voices.find(v=>v.lang.toLowerCase().startsWith('en'));if(preferred)u.voice=preferred;speechSynthesis.speak(u)}
   function toggleStar(id){let p=store.progress[id]||{};p.starred=!p.starred;store.progress[id]=p;save();render();if(ui.drawer===id)openDrawer(id);toast(p.starred?'Đã lưu vào mục yêu thích.':'Đã bỏ khỏi mục yêu thích.')}
-  function review(id,rating){const p=store.progress[id]||{};let level=p.level||0;if(rating==='hard')level=1;else if(rating==='good')level=Math.min(level+1,5);else level=Math.min(level+2,5);const intervals=[0,1,3,7,14,30];store.progress[id]={...p,level,lastReviewed:localDay(),nextReview:addDays(intervals[level]),reviews:(p.reviews||0)+1};save()}
+  function review(id,rating){const p=store.progress[id]||{};let level=p.level||0;if(rating==='hard')level=1;else if(rating==='good')level=Math.min(level+1,5);else level=Math.min(level+2,5);const intervals=[0,1,3,7,14,30];store.progress[id]={...p,level,lastReviewed:localDay(),nextReview:addDays(intervals[level]),reviews:(p.reviews||0)+1};store.activityDates=[...new Set([...(store.activityDates||[]),localDay()])];store.reviewEvents=[...(store.reviewEvents||[]),{date:localDay(),entryId:id,rating}].slice(-3000);save()}
   function normalize(s){return String(s||'').toLowerCase().normalize('NFKD').replace(/[’‘]/g,"'").replace(/[^a-z0-9'\s]/g,'').replace(/\s+/g,' ').trim()}
   function checkRecall(raw,forceWrong=false){const q=ui.quiz;if(!q||ui.showAnswer)return;const e=store.entries.find(e=>e.id===q.answerId);if(!e)return;const correct=!forceWrong&&normalize(raw)===normalize(e.phrase);q.selected='typed';q.isCorrect=correct;ui.quizTotal++;if(correct)ui.quizCorrect++;review(e.id,correct?'good':'hard');ui.showAnswer=true;render()}
   function quizAnswer(id){const q=ui.quiz;if(!q||q.selected)return;q.selected=id;q.isCorrect=id===q.answerId;ui.quizTotal++;if(q.isCorrect)ui.quizCorrect++;review(q.answerId,q.isCorrect?'good':'hard');render()}
   function saveJSON(){const exportData={version:1,app:'Speaking Collocations Studio',exportedAt:new Date().toISOString(),topics:store.topics,entries:store.entries,progress:store.progress,deletedIds:store.deletedIds,sessions:store.sessions};const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`speakwise-backup-${localDay()}.json`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3000);toast('Đã xuất bản sao JSON.')}
   async function importJSON(file){if(!file)return;try{const raw=JSON.parse(await file.text());const payload=Array.isArray(raw)?{entries:raw}:raw;if(!payload||typeof payload!=='object'||!Array.isArray(payload.entries))throw new Error('Thiếu danh sách entries.');const incomingTopics=Array.isArray(payload.topics)?payload.topics.filter(t=>t.id&&t.name&&['life','ielts'].includes(t.section)):[];const allTopics=combine(store.topics,incomingTopics,'id');const ids=new Set(allTopics.map(t=>t.id));let count=0,updated=0;for(const x of payload.entries){if(!x||typeof x.phrase!=='string'||!x.phrase.trim()||typeof x.meaning!=='string'||typeof x.example!=='string'||!ids.has(x.topicId))continue;const id=typeof x.id==='string'&&x.id?x.id:'import-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);const item={id,topicId:x.topicId,phrase:x.phrase.trim(),ipa:String(x.ipa||''),meaning:x.meaning.trim(),example:x.example.trim(),note:String(x.note||''),source:String(x.source||'Cập nhật từ buổi luyện'),addedAt:String(x.addedAt||localDay())};const idx=store.entries.findIndex(e=>e.id===id);if(idx>=0){store.entries[idx]={...store.entries[idx],...item};updated++}else{store.entries.push(item);count++}store.deletedIds=store.deletedIds.filter(d=>d!==id)}store.topics=allTopics;if(Array.isArray(payload.deletedIds)){store.deletedIds=[...new Set([...store.deletedIds,...payload.deletedIds])];store.entries=store.entries.filter(x=>!store.deletedIds.includes(x.id));}if(payload.progress&&typeof payload.progress==='object'&&!Array.isArray(payload.progress))store.progress={...store.progress,...payload.progress};if(Array.isArray(payload.sessions))store.sessions=combine(store.sessions,payload.sessions,'id');save();ui.page=1;ui.deck=[];ui.quiz=null;render();toast(`Đã nhập ${count} cụm mới và cập nhật ${updated} cụm.`)}catch(error){toast('File JSON chưa hợp lệ: '+error.message)}finally{document.getElementById('importFile').value=''}}
-  function goView(v){if(ui.view==='quiz'&&v!=='quiz')cleanupAudio();ui.view=v;if(v==='flashcards')makeDeck();if(v==='quiz'){ui.quizSeen=[];ui.quiz=null;ui.quizCorrect=0;ui.quizTotal=0}render();document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'})}
+  function goView(v){if(ui.view==='apply'&&v!=='apply')cleanupAudio();ui.view=v;if(v==='flashcards')makeDeck();if(v==='memory'||v==='apply'){ui.quizMode=v==='apply'?'sentence':ui.quizMode==='sentence'?'multiple':ui.quizMode;ui.quizSeen=[];ui.quiz=null;ui.quizCorrect=0;ui.quizTotal=0}render();document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open');window.scrollTo({top:0,behavior:'smooth'})}
   document.addEventListener('click',e=>{
     const nav=e.target.closest('[data-nav]');if(nav){goView(nav.dataset.nav);return}
     const el=e.target.closest('[data-action]');if(!el)return;
@@ -567,7 +596,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     switch(action){
       case 'toggleGroup':collapsedGroups[section]=!collapsedGroups[section];try{localStorage.setItem(GROUPS_KEY,JSON.stringify(collapsedGroups))}catch(_){}sidebar();break;
       case 'section':ui.section=section;ui.topic='all';ui.page=1;ui.view='library';render();break;
-      case 'topic':ui.topic=topicId;ui.section=topic(topicId)?.section||'all';ui.page=1;ui.view='library';render();document.querySelector('.library-card')?.scrollIntoView({behavior:'smooth',block:'start'});break;
+      case 'topic':ui.topic=topicId;ui.section=topic(topicId)?.section||'all';ui.page=1;ui.view='topics';render();document.querySelector('.library-card')?.scrollIntoView({behavior:'smooth',block:'start'});break;
       case 'clearFilters':ui.section='all';ui.topic='all';ui.filter='all';ui.query='';ui.page=1;render();break;
       case 'page':ui.page=Number(page);libraryTable();break;
       case 'detail':openDrawer(id);break;
@@ -614,12 +643,10 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   document.addEventListener('submit',e=>{if(e.target.id==='entryForm'){e.preventDefault();saveEntry(e.target)}if(e.target.id==='recallForm'){e.preventDefault();checkRecall(ui.recallText)}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeModal();document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')}if(e.key===' '&&!['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName)&&!ui.modal&&!ui.drawer&&ui.view==='flashcards'){e.preventDefault();if(ui.deck[ui.deckAt]){ui.flipped=!ui.flipped;render()}}if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-action="detail"]')){e.preventDefault();openDrawer(e.target.dataset.id)}if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('flashcard')&&ui.view==='flashcards'){e.preventDefault();ui.flipped=!ui.flipped;render()}});
   document.getElementById('addBtn').addEventListener('click',()=>entryModal());
-  document.getElementById('importBtn').addEventListener('click',()=>document.getElementById('importFile').click());
-  document.getElementById('exportBtn').addEventListener('click',saveJSON);
   document.getElementById('importFile').addEventListener('change',e=>importJSON(e.target.files?.[0]));
   document.getElementById('menuToggle').addEventListener('click',()=>{document.getElementById('sidebar').classList.add('open');document.getElementById('mobileShade').classList.add('open')});
   document.getElementById('mobileShade').addEventListener('click',()=>{document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')});
-  document.getElementById('brandLink').addEventListener('click',e=>{e.preventDefault();goView('library');ui.section='all';ui.topic='all';render()});
+  document.getElementById('brandLink').addEventListener('click',e=>{e.preventDefault();goView('home');ui.section='all';ui.topic='all';render()});
   render();
   verifyAiService();
   window.SpeakwiseSync?.init({store,render,toast});
