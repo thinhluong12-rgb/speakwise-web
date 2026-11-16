@@ -224,6 +224,25 @@ body{font-size:15px;line-height:1.62}
 @media(max-width:1000px){.sw-stats{grid-template-columns:repeat(2,1fr)}.sw-home-grid{grid-template-columns:1fr}}
 @media(max-width:650px){.sw-welcome{display:block;padding:22px}.sw-welcome button{margin-top:10px}.sw-stat{padding:13px}.sw-stat strong{font-size:27px}}
 
+
+.sw-study-single{display:block!important;max-width:970px;margin:0 auto}.sw-study-single .practice-panel{max-width:none;width:100%;min-width:0}
+.sw-study-panel{padding:24px!important}
+.sw-progress{border-bottom:1px solid #e5eeeb;padding:0 0 15px;margin-bottom:18px}
+.sw-progress>div:first-child{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;color:#678c87;margin-bottom:9px}
+.sw-progress strong{color:#245c58}.sw-track{height:9px;background:#e7efed;border-radius:100px;overflow:hidden}.sw-track i{height:100%;display:block;background:linear-gradient(90deg,#1b9283,#67c4b2);border-radius:100px;transition:width .2s}
+.sw-flashcard,.sw-prompt{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:310px!important;border:2px solid #addbd0!important;background:linear-gradient(135deg,#fbfffd,#eaf8f3)!important;border-radius:23px!important;padding:38px 55px!important;text-align:center;box-shadow:0 9px 30px #24645116!important}
+.sw-flashcard .sw-card-phrase{font-size:clamp(32px,4.5vw,49px)!important;font-weight:850!important;color:#20504e!important;line-height:1.27;letter-spacing:-.7px}
+.sw-flashcard .sw-card-meaning{font-size:clamp(25px,3.6vw,35px)!important;color:#176f65!important;font-weight:780!important;line-height:1.4}
+.sw-card-ipa{font-size:17px!important;color:#739490!important}
+.sw-card-example{font-style:italic;font-size:clamp(18px,2.4vw,22px)!important;color:#3b6660;line-height:1.75!important;max-width:680px}
+.sw-card-example strong{font-weight:800;color:#146d60}
+.sw-card-audio,.sw-prompt-audio{width:45px;height:45px;display:grid;place-items:center;border:1px solid #a4d3c7;border-radius:100%;background:white;color:#137d73;cursor:pointer;box-shadow:0 4px 12px #235c5115}
+.sw-card-audio,.sw-prompt-audio{position:absolute;right:18px;top:18px}
+.sw-prompt{min-height:226px!important}.sw-prompt h2{font-size:clamp(26px,3.5vw,37px)!important;color:#1d6660;line-height:1.35}.sw-prompt .target-meaning{font-size:17px;font-weight:600;color:#6b8982}
+.sw-skill-tabs{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:17px}.sw-skill-tabs button{border:1px solid #d3e4dd;border-radius:12px;padding:15px;background:#f5faf8;color:#527774;font-weight:750;font-size:15px;cursor:pointer}.sw-skill-tabs button.active{background:#e0f5ee;color:#126d61;border-color:#5cb6a1}
+.study-actions{justify-content:center}
+@media(max-width:650px){.sw-study-panel{padding:14px!important}.sw-flashcard,.sw-prompt{padding:40px 17px!important;min-height:274px!important}.sw-prompt{min-height:216px!important}.sw-card-audio{top:10px;right:10px}}
+
 </style>
 </head>
 <body>
@@ -423,12 +442,42 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function scopeOptions(selected='all'){return `<option value="all" ${selected==='all'?'selected':''}>Tất cả chủ đề</option>`+store.topics.map(t=>`<option value="${esc(t.id)}" ${selected===t.id?'selected':''}>${t.section==='life'?'Daily Life':'IELTS'} · ${esc(t.name)}</option>`).join('')}
   function studyPool(){let arr=ui.quizTopic==='all'?[...store.entries]:store.entries.filter(e=>e.topicId===ui.quizTopic);if(ui.quizScope==='due')arr=arr.filter(e=>{let p=progress(e.id);return p.level>0&&p.nextReview&&p.nextReview<=localDay()});if(ui.quizScope==='star')arr=arr.filter(e=>progress(e.id).starred);return arr}
   function makeDeck(){ui.deck=studyPool().map(e=>e.id); for(let i=ui.deck.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[ui.deck[i],ui.deck[j]]=[ui.deck[j],ui.deck[i]]} ui.deckAt=0;ui.flipped=false;}
-  function practiceHeader(view){const isFlash=view==='flashcards';return intro(isFlash?'Flashcards theo chủ đề':'Thử thách ghi nhớ','Nhìn – nhớ – nói – tự kiểm tra. Mỗi lượt ôn là một lần củng cố khả năng sử dụng cụm từ.',isFlash?'PRACTICE · FLASHCARDS':'PRACTICE · ACTIVE RECALL')+`<div class="practice-filters"><select class="filter-select" aria-label="Chọn topic" id="practiceTopic">${scopeOptions(ui.quizTopic)}</select><select class="filter-select" aria-label="Chọn bộ thẻ" id="practiceScope"><option value="all" ${ui.quizScope==='all'?'selected':''}>Tất cả cụm từ</option><option value="due" ${ui.quizScope==='due'?'selected':''}>Đến hạn ôn (${dueCount()})</option><option value="star" ${ui.quizScope==='star'?'selected':''}>Đã đánh dấu (${savedCount()})</option></select><button class="btn btn-muted" data-action="restart">${icon('refresh')} Làm lại bộ thẻ</button></div>`}
-  function studySide(){const pool=studyPool();return `<aside class="practice-side"><div class="eyebrow">YOUR PROGRESS</div><h3 style="margin-top:7px">Nhớ lâu bằng cách ôn lại</h3><p>Đánh giá mức độ nhớ sau khi xem đáp án. Hệ thống sẽ gợi ý ngày ôn tiếp theo trên chính thiết bị này.</p><div class="progress-track"><div class="progress-fill" style="width:${Math.round(Math.min(reviewedCount()/Math.max(store.entries.length,1),1)*100)}%"></div></div><p><strong style="color:#167f71">${reviewedCount()}/${store.entries.length}</strong> cụm từ đã ôn · <strong style="color:#167f71">${dueCount()}</strong> đang đến hạn</p><div class="data-callout">${icon('lightbulb')} <b>Mẹo:</b> Thử đặt một câu mới bằng chính trải nghiệm của bạn trước khi lật thẻ.</div><p style="margin-top:16px">Bộ đang chọn: <strong style="color:#42616d">${pool.length} cụm từ</strong></p></aside>`}
-  function flashcards(){if(!ui.deck.length){makeDeck()}const current=store.entries.find(e=>e.id===ui.deck[ui.deckAt]);let card;
-    if(!current){card=`<div class="empty-state"><div class="empty-icon">${icon('checkCircle')}</div><b>${ui.deck.length?'Đã hoàn thành lượt ôn!':'Chưa có cụm từ trong bộ này'}</b><p>${ui.deck.length?'Tuyệt vời! Bạn có thể bắt đầu lại hoặc chuyển sang quiz.':'Chọn chủ đề khác hoặc bộ “Tất cả cụm từ”.'}</p><div style="margin-top:18px"><button class="btn btn-primary" data-action="restart">Ôn lại từ đầu</button></div></div>`}
-    else card=`<div class="study-counter">THẺ ${ui.deckAt+1} / ${ui.deck.length}</div><div class="flashcard" data-action="flip" role="button" tabindex="0" aria-label="Lật thẻ"><div class="flashcard-hint">${ui.flipped?'NGHĨA & VÍ DỤ':'ENGLISH COLLOCATION'}</div>${ui.flipped?`<h2 style="font-size:23px">${esc(current.meaning)}</h2><div class="flashcard-reveal">${esc(current.example)}</div>`:`<h2>${esc(current.phrase)}</h2>${current.ipa?`<p>${esc(current.ipa)}</p>`:''}`}<span class="flip-hint">${icon('refresh')} Bấm vào thẻ hoặc Space để lật</span></div><div class="study-actions">${ui.flipped?`<button class="rating-btn hard" data-action="rate" data-rating="hard">${icon('refresh')} Cần ôn lại · 1 ngày</button><button class="rating-btn good" data-action="rate" data-rating="good">${icon('checkCircle')} Nhớ được</button><button class="rating-btn easy" data-action="rate" data-rating="easy">${icon('sparkles')} Rất dễ</button>`:`<button class="btn btn-muted" data-action="speak" data-id="${esc(current.id)}">${icon('volume')} Nghe</button><button class="btn btn-primary" data-action="flip">${icon('refresh')} Xem nghĩa & ví dụ</button>`}</div>`;
-    return practiceHeader('flashcards')+`<div class="practice-layout"><section class="practice-panel">${card}</section>${studySide()}</div>`}
+  function practiceHeader(view){
+    const names={flashcards:['Flashcards','Học cách dùng cụm từ qua nghĩa và ví dụ.'],memory:['Ghi nhớ','Kiểm tra khả năng nhớ lại bằng trắc nghiệm hoặc gõ từ.'],apply:['Ứng dụng','Dùng collocations để luyện viết, luyện nói và nhận AI feedback.']};
+    const [name,desc]=names[view]||names.memory;
+    return intro(name,desc)+'<div class="practice-filters">'+
+      '<select class="filter-select" aria-label="Chọn topic" id="practiceTopic">'+scopeOptions(ui.quizTopic)+'</select>'+
+      '<select class="filter-select" aria-label="Chọn bộ từ" id="practiceScope"><option value="all" '+(ui.quizScope==='all'?'selected':'')+'>Tất cả cụm từ</option>'+
+      '<option value="due" '+(ui.quizScope==='due'?'selected':'')+'>Đến hạn ôn ('+dueCount()+')</option>'+
+      '<option value="star" '+(ui.quizScope==='star'?'selected':'')+'>Đã đánh dấu ('+savedCount()+')</option></select>'+
+      '<button class="btn btn-muted" data-action="restart">'+icon('refresh')+' Bắt đầu lại</button></div>';
+  }
+  function swProgress(current,total){
+    const percent=Math.min(100,Math.round(100*current/Math.max(1,total)));
+    return '<div class="sw-progress"><div><strong>Tiến độ bộ từ</strong><span>'+Math.min(current,total)+' / '+total+' · '+percent+'%</span></div><div class="sw-track"><i style="width:'+percent+'%"></i></div></div>';
+  }
+  function exampleFormat(e){const txt=String(e.example||''),phrase=String(e.phrase||''),at=txt.toLowerCase().indexOf(phrase.toLowerCase());
+    if(at<0)return esc(txt);
+    return esc(txt.slice(0,at))+'<strong>'+esc(txt.slice(at,at+phrase.length))+'</strong>'+esc(txt.slice(at+phrase.length));
+  }
+  function flashcards(){if(!ui.deck.length)makeDeck();
+    const current=store.entries.find(e=>e.id===ui.deck[ui.deckAt]);
+    let card;
+    if(!current)card='<div class="empty-state"><div class="empty-icon">'+icon('checkCircle')+'</div><b>Đã hoàn thành hoặc chưa có từ phù hợp</b><p>Chọn bộ từ khác hoặc bắt đầu lại.</p><button class="btn btn-primary" data-action="restart">Ôn lại</button></div>';
+    else card='<div class="flashcard sw-flashcard" data-action="flip" role="button" tabindex="0" aria-label="Lật thẻ">'+
+      '<button type="button" class="sw-card-audio" data-action="speak" data-id="'+esc(current.id)+'" aria-label="Nghe phát âm">'+icon('volume')+'</button>'+
+      '<div class="flashcard-hint">'+(ui.flipped?'MEANING & EXAMPLE':'ENGLISH COLLOCATION')+'</div>'+
+      (ui.flipped?'<h2 class="sw-card-meaning">'+esc(current.meaning)+'</h2><div class="flashcard-reveal sw-card-example">'+exampleFormat(current)+'</div>':
+      '<h2 class="sw-card-phrase">'+esc(current.phrase)+'</h2>'+(current.ipa?'<p class="sw-card-ipa">'+esc(current.ipa)+'</p>':''))+
+      '<span class="flip-hint">'+icon('refresh')+' Chạm thẻ hoặc nhấn Space để lật</span></div>'+
+      '<div class="study-actions">'+(ui.flipped?
+        '<button class="rating-btn hard" data-action="rate" data-rating="hard">Cần ôn lại</button>'+
+        '<button class="rating-btn good" data-action="rate" data-rating="good">Nhớ được</button>'+
+        '<button class="rating-btn easy" data-action="rate" data-rating="easy">Rất dễ</button>':
+        '<button class="btn btn-primary" data-action="flip">'+icon('refresh')+' Xem nghĩa & ví dụ</button>')+'</div>';
+    return practiceHeader('flashcards')+'<div class="practice-layout sw-study-single"><section class="practice-panel sw-study-panel">'+
+      swProgress(Math.min(ui.deckAt,ui.deck.length),ui.deck.length)+card+'</section></div>';
+  }
   function shuffle(a){let copy=[...a];for(let i=copy.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[copy[i],copy[j]]=[copy[j],copy[i]]}return copy}
   function nextQuiz(){cleanupAudio();ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceText='';ui.sentenceBusy=false;let pool=studyPool();let available=pool.filter(e=>!ui.quizSeen.includes(e.id));if(!available.length){ui.quizSeen=[];available=pool}if(!available.length){ui.quiz=null;return}const answer=available[Math.floor(Math.random()*available.length)];ui.quizSeen.push(answer.id);let distractors=shuffle(pool.filter(e=>e.id!==answer.id));if(distractors.length<3)distractors=shuffle([...distractors,...store.entries.filter(e=>e.id!==answer.id&&!distractors.includes(e))]);ui.quiz={answerId:answer.id,options:shuffle([answer,...distractors.slice(0,3)].map(e=>({id:e.id,phrase:e.phrase}))),selected:null,isCorrect:null};ui.showAnswer=false;ui.recallText=''}
   function scoreLabel(score){return score>=85?'Rất tốt':score>=70?'Khá tốt':score>=50?'Cần cải thiện':'Cần luyện thêm'}
@@ -495,29 +544,39 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   }
   function sentenceEditor(){
     return `<div class="sentence-workspace"><div class="sentence-intro"><div><div class="eyebrow">USE IT IN CONTEXT</div><h3>Đặt một câu với collocation trên</h3><p>Viết hoặc nói một câu có ý nghĩa từ chính trải nghiệm của bạn. AI sẽ phản hồi cách dùng từ, ngữ pháp và độ tự nhiên.</p></div></div>
-      <div class="sentence-modes" role="group" aria-label="Chọn hình thức đặt câu"><button type="button" class="${ui.sentenceMode==='write'?'active':''}" data-action="sentenceMode" data-mode="write">${icon('pen')} Viết câu</button><button type="button" class="${ui.sentenceMode==='speak'?'active':''}" data-action="sentenceMode" data-mode="speak">${icon('microphone')} Nói câu</button></div>
+
       ${ui.sentenceMode==='write'?`<div class="sentence-input-area"><label for="sentenceInput">Câu tiếng Anh của bạn</label><textarea id="sentenceInput" rows="4" placeholder="Write a meaningful sentence using the target collocation..." ${ui.sentenceBusy?'disabled':''}>${esc(ui.sentenceText)}</textarea><div class="sentence-actions"><p>Cần sử dụng collocation trong câu, không chỉ chép riêng cụm từ.</p><button class="btn btn-primary" data-action="evaluateSentence" ${ui.sentenceBusy?'disabled':''}>${icon('sparkles')} ${ui.sentenceBusy?'Đang chấm...':'Nhận AI feedback'}</button></div></div>`:
       `<div class="speech-workspace"><div class="speech-icon ${ui.recording?'recording':''}">${icon('microphone')}</div><strong>${ui.recording?'Đang ghi âm câu nói của bạn...':ui.audioBlob?'Đã ghi âm. Nghe lại hoặc gửi chấm.':'Sẵn sàng luyện nói'}</strong><p>${ui.recording?'Bấm Dừng ghi âm khi hoàn thành. Thời lượng tối đa 45 giây.':'Dùng microphone để nói câu tiếng Anh chứa collocation trên.'}</p><div class="speech-controls">${ui.recording?`<button type="button" class="btn btn-record stop" data-action="stopRecord">${icon('square')} Dừng ghi âm</button>`:`<button type="button" class="btn btn-record" data-action="startRecord">${icon('microphone')} ${ui.audioBlob?'Ghi âm lại':'Bắt đầu nói'}</button>`}${ui.audioBlob&&!ui.recording?`<button type="button" class="btn btn-primary" data-action="evaluateSentence" ${ui.sentenceBusy?'disabled':''}>${icon('sparkles')} ${ui.sentenceBusy?'Đang chấm...':'Nhận AI feedback'}</button>`:''}</div>${ui.audioUrl&&!ui.recording?`<audio controls class="speech-playback" src="${esc(ui.audioUrl)}" aria-label="Nghe lại bản ghi âm của bạn"></audio>`:''}<p class="small-note">Cần quyền microphone và kết nối HTTPS/localhost (tuỳ trình duyệt). Giọng nói được gửi tới AI khi bạn chọn chấm; không tự động tải lên.</p></div>`}
-      ${aiSettings()}${ui.sentenceError?`<div class="ai-error-inline" role="alert"><strong>Không thể chấm câu lúc này</strong><p>${esc(ui.sentenceError)}</p><span>Bài làm và bản ghi âm vẫn được giữ lại để bạn có thể thử lại.</span></div>`:''}${ui.sentenceBusy?`<div class="ai-pending" role="status">${icon('sparkles')} AI đang phân tích câu trả lời. Vui lòng đợi...</div>`:''}${feedbackPanel(ui.sentenceResult)}
+      ${ui.sentenceError?`<div class="ai-error-inline" role="alert"><strong>Không thể chấm câu lúc này</strong><p>${esc(ui.sentenceError)}</p><span>Bài làm và bản ghi âm vẫn được giữ lại để bạn có thể thử lại.</span></div>`:''}${ui.sentenceBusy?`<div class="ai-pending" role="status">${icon('sparkles')} AI đang phân tích câu trả lời. Vui lòng đợi...</div>`:''}${feedbackPanel(ui.sentenceResult)}
       <div class="sentence-nav"><button class="btn btn-muted" data-action="skipSentence">Bỏ qua cụm này</button></div>
       </div>`;
   }
-  function quiz(){if(!ui.quiz)nextQuiz();const q=ui.quiz;const current=q&&store.entries.find(e=>e.id===q.answerId);let body='';
-    if(!current){body=`<div class="empty-state"><div class="empty-icon">${icon('brain')}</div><b>Chưa có từ phù hợp</b><p>Vui lòng chọn một bộ từ khác.</p></div>`}
+  function quiz(){
+    if(!ui.quiz)nextQuiz();
+    const q=ui.quiz,current=q&&store.entries.find(e=>e.id===q.answerId),sentence=ui.view==='apply';
+    let body='';
+    if(!current)body='<div class="empty-state"><div class="empty-icon">'+icon('brain')+'</div><b>Chưa có từ phù hợp</b><p>Hãy chọn một topic khác.</p></div>';
     else{
-      const sentence=ui.quizMode==='sentence';
-      body=`<div class="quiz-switch"><button class="${ui.quizMode==='multiple'?'active':''}" data-action="quizMode" data-mode="multiple">Trắc nghiệm</button><button class="${ui.quizMode==='recall'?'active':''}" data-action="quizMode" data-mode="recall">Gõ từ trí nhớ</button><button class="${sentence?'active':''}" data-action="quizMode" data-mode="sentence">${icon('pen')} Đặt câu · AI feedback</button></div><div class="study-counter">${sentence?'LUYỆN VẬN DỤNG':`CÂU HỎI ${ui.quizTotal+1} · ĐÚNG ${ui.quizCorrect}/${ui.quizTotal}`}</div><div class="flashcard quiz-prompt ${sentence?'sentence-prompt':''}" style="min-height:185px;cursor:default"><div class="flashcard-hint">${sentence?'TARGET COLLOCATION':'ĐỌC NGHĨA · NHỚ CỤM TỪ'}</div><h2>${esc(sentence?current.phrase:current.meaning)}</h2>${sentence?`<p class="target-meaning">${esc(current.meaning)}</p>`:'<p>Chọn hoặc nhớ lại cách diễn đạt tiếng Anh phù hợp</p>'}</div>`;
-      if(sentence){body+=sentenceEditor()}
+      body=(sentence?'<div class="sw-skill-tabs"><button class="'+(ui.sentenceMode==='write'?'active':'')+'" data-action="sentenceMode" data-mode="write">✍️ Luyện viết</button><button class="'+(ui.sentenceMode==='speak'?'active':'')+'" data-action="sentenceMode" data-mode="speak">🎙️ Luyện nói</button></div>':
+        '<div class="quiz-switch"><button class="'+(ui.quizMode==='multiple'?'active':'')+'" data-action="quizMode" data-mode="multiple">Trắc nghiệm</button>'+
+        '<button class="'+(ui.quizMode==='recall'?'active':'')+'" data-action="quizMode" data-mode="recall">Gõ từ</button></div>')+
+        '<div class="flashcard quiz-prompt sw-prompt '+(sentence?'sentence-prompt':'')+'"><div class="flashcard-hint">'+(sentence?'TARGET COLLOCATION':'RECALL PRACTICE')+'</div>'+
+        '<h2>'+esc(sentence?current.phrase:current.meaning)+'</h2>'+(sentence?
+        '<p class="target-meaning">'+esc(current.meaning)+'</p><button type="button" class="sw-prompt-audio" data-action="speak" data-id="'+esc(current.id)+'" aria-label="Nghe collocation">'+icon('volume')+'</button>':
+        '<p>Nhớ lại collocation tiếng Anh tương ứng</p>')+'</div>';
+      if(sentence)body+=sentenceEditor();
       else if(ui.quizMode==='multiple'){
-        body+=`<div class="quiz-options">${q.options.map((opt,i)=>`<button class="quiz-option ${q.selected?opt.id===q.answerId?'correct':q.selected===opt.id?'wrong':'':''}" data-action="quizAnswer" data-id="${esc(opt.id)}" ${q.selected?'disabled':''}><span class="option-letter">${String.fromCharCode(65+i)}</span>${esc(opt.phrase)}</button>`).join('')}</div>`;
-        if(q.selected)body+=`<div class="quiz-result ${q.isCorrect?'':'bad'}">${q.isCorrect?'Chính xác!':'Chưa đúng.'} <strong>${esc(current.phrase)}</strong><div>${esc(current.example)}</div></div><div class="quiz-controls"><button class="btn btn-primary" data-action="nextQuiz">Câu tiếp theo ${icon('arrowRight')}</button></div>`;
+        body+='<div class="quiz-options">'+q.options.map((opt,i)=>'<button class="quiz-option '+(q.selected?(opt.id===q.answerId?'correct':q.selected===opt.id?'wrong':''):'')+'" data-action="quizAnswer" data-id="'+esc(opt.id)+'" '+(q.selected?'disabled':'')+'><span class="option-letter">'+String.fromCharCode(65+i)+'</span>'+esc(opt.phrase)+'</button>').join('')+'</div>';
+        if(q.selected)body+='<div class="quiz-result '+(q.isCorrect?'':'bad')+'">'+(q.isCorrect?'Chính xác!':'Chưa đúng.')+' <strong>'+esc(current.phrase)+'</strong><div><em>'+exampleFormat(current)+'</em></div></div><div class="quiz-controls"><button class="btn btn-primary" data-action="nextQuiz">Câu tiếp theo '+icon('arrowRight')+'</button></div>';
       }else{
-        body+=`<form class="recall-input" id="recallForm"><input id="recallInput" aria-label="Nhập cụm từ tiếng Anh" autocomplete="off" placeholder="Viết cụm từ tiếng Anh mà bạn nhớ..." value="${esc(ui.recallText)}" ${ui.showAnswer?'disabled':''}/><button type="submit" class="btn btn-primary" ${ui.showAnswer?'disabled':''}>Kiểm tra</button></form>`;
-        if(ui.showAnswer)body+=`<div class="quiz-result ${q.isCorrect?'':'bad'}">${q.isCorrect?'Đúng rồi!':'Đáp án để đối chiếu:'} <strong>${esc(current.phrase)}</strong><div>${esc(current.example)}</div></div><div class="quiz-controls"><button class="btn btn-primary" data-action="nextQuiz">Câu tiếp theo ${icon('arrowRight')}</button></div>`;
-        else body+=`<p class="recall-hint">Bỏ qua nếu chưa nhớ? <button type="button" style="border:0;background:none;text-decoration:underline;color:#228978;font-weight:750" data-action="revealQuiz">Hiện đáp án</button></p>`
+        body+='<form class="recall-input" id="recallForm"><input id="recallInput" aria-label="Nhập collocation" autocomplete="off" placeholder="Gõ collocation tiếng Anh..." value="'+esc(ui.recallText)+'" '+(ui.showAnswer?'disabled':'')+'/>'+
+          '<button type="submit" class="btn btn-primary" '+(ui.showAnswer?'disabled':'')+'>Kiểm tra</button></form>';
+        if(ui.showAnswer)body+='<div class="quiz-result '+(q.isCorrect?'':'bad')+'">'+(q.isCorrect?'Đúng rồi!':'Đáp án:')+' <strong>'+esc(current.phrase)+'</strong><div><em>'+exampleFormat(current)+'</em></div></div><div class="quiz-controls"><button class="btn btn-primary" data-action="nextQuiz">Câu tiếp theo '+icon('arrowRight')+'</button></div>';
+        else body+='<p class="recall-hint">Chưa nhớ? <button type="button" data-action="revealQuiz">Hiện đáp án</button></p>';
       }
     }
-    return practiceHeader('quiz')+`<div class="practice-layout"><section class="practice-panel">${body}</section>${studySide()}</div>`;
+    return practiceHeader(sentence?'apply':'memory')+'<div class="practice-layout sw-study-single"><section class="practice-panel sw-study-panel">'+
+      swProgress(Math.min(ui.quizSeen.length,studyPool().length),studyPool().length)+body+'</section></div>';
   }
   function cleanupAudio(){
     if(recordingTimer){clearTimeout(recordingTimer);recordingTimer=null}
@@ -539,7 +598,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
         if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}
         if(recordingTimer){clearTimeout(recordingTimer);recordingTimer=null}
         if(audioChunks.length){ui.audioBlob=new Blob(audioChunks,{type:rec.mimeType||'audio/webm'});ui.audioUrl=URL.createObjectURL(ui.audioBlob)}
-        ui.recording=false;if(ui.view==='quiz'&&ui.quizMode==='sentence')render();
+        ui.recording=false;if(ui.view==='apply')render();
       };
       rec.start();ui.recording=true;render();
       recordingTimer=setTimeout(()=>{if(rec.state==='recording')stopRecord()},45000);
