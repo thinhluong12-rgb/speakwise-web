@@ -372,9 +372,9 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function readSaved(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){return {}}}
   function combine(seedList, userList, key){const map = new Map((seedList||[]).map(e=>[e[key],e]));for(const e of (userList||[])){if(e && e[key])map.set(e[key],{...(map.get(e[key])||{}),...e})}return [...map.values()]}
   const saved=readSaved();
-  const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[]};
+  const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[],mistakes:Array.isArray(saved.mistakes)?saved.mistakes:[],settings:{dailyGoal:8,...(saved.settings||{})},lastPractice:saved.lastPractice||null};
   store.entries=store.entries.filter(e=>!store.deletedIds.includes(e.id));
-  const ui={view:'home',section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false};
+  const ui={view:'home',section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false,focusMode:false,journey:null,journeyReturn:'home'};
   const GROUPS_KEY='speakwise-collapsed-groups-v3';
   let collapsedGroups={life:false,ielts:false};
   try { const remembered=JSON.parse(localStorage.getItem(GROUPS_KEY)||'{}'); collapsedGroups={life:!!remembered.life,ielts:!!remembered.ielts}; } catch (_) {}
@@ -417,11 +417,11 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     finally{clearTimeout(timer);updateAiStatus()}
   }
   let recorder=null,micStream=null,recordingTimer=null,audioChunks=[];
-  function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(store))}catch(e){toast('Không thể lưu trong trình duyệt. Hãy xuất bản sao dữ liệu.')}window.SpeakwiseSync?.scheduleSave?.()}
+  function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(store))}catch(e){toast('Không lưu được tiến độ. Vui lòng kiểm tra bộ nhớ trình duyệt.')}window.SpeakwiseSync?.scheduleSave?.()}
   const topic = id=>store.topics.find(t=>t.id===id);
   const progress=id=>store.progress[id]||{};
   const reviewedCount=()=>Object.values(store.progress).filter(p=>p.level>0).length;
-  const masteredCount=()=>Object.values(store.progress).filter(p=>p.level>=4).length;
+  const masteredCount=()=>store.entries.filter(e=>stageOf(e.id)==='applied').length;
   const dueCount=()=>store.entries.filter(e=>{const p=progress(e.id);return p.level>0 && p.nextReview && p.nextReview<=localDay()}).length;
   const savedCount=()=>store.entries.filter(e=>progress(e.id).starred).length;
   const sectionName=s=>s==='life'?'Daily Life':s==='ielts'?'IELTS Speaking':'Tất cả chủ đề';
@@ -436,9 +436,14 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   }
   function hero(){return `<div class="hero"><div class="hero-content"><div class="hero-tag">${icon('sparkles')} YOUR SPEAKING LIBRARY</div><h2>Học theo ngữ cảnh.<br/>Diễn đạt tự nhiên hơn mỗi ngày.</h2><p>Lưu lại những collocations đã luyện, xem ví dụ thực tế và ôn lại đúng lúc — không cần học thuộc cả bài mẫu.</p></div><div class="hero-art" aria-hidden="true"><div class="hero-circle-one"></div><div class="hero-circle-two"></div><div class="hero-card-float"><strong>learn in context ✦</strong><p>Speak clearly & confidently</p></div><div class="hero-chip">make it stick ↗</div></div></div>`}
   function stats(){const configs=[['Tổng cụm từ',store.entries.length,'bookOpen',''],['Đã ôn ít nhất 1 lần',reviewedCount(),'checkCircle','blue'],['Đã vững',masteredCount(),'sparkles','amber'],['Đến hạn ôn',dueCount(),'clock','rose']];return `<div class="stats">${configs.map(([l,v,ic,cl])=>`<div class="stat"><div><div class="stat-label">${l}</div><div class="stat-value">${v}</div></div><div class="stat-icon ${cl}">${icon(ic)}</div></div>`).join('')}</div>`}
-  function topicGrid(){return '<div class="topic-grid sw-topic-grid">'+store.topics.map(t=>
-    '<button type="button" class="topic-tile '+(ui.topic===t.id?'active':'')+'" data-action="topic" data-topic="'+esc(t.id)+'" aria-expanded="'+(ui.topic===t.id)+'" aria-controls="selectedTopicCollocations"><span class="topic-symbol">'+icon(t.icon||'book')+'</span><span><strong>'+esc(t.name)+'</strong><small>'+
-    store.entries.filter(e=>e.topicId===t.id).length+' collocations</small></span></button>').join('')+'</div>'}
+  const stageNames={new:'Mới',recognised:'Đã nhận diện',recalled:'Đã nhớ lại',applied:'Vận dụng vững'};
+  function evidenceFor(id){const e=progress(id).evidence||{};return {...e,recallDays:Array.isArray(e.recallDays)?e.recallDays:[],applyDays:Array.isArray(e.applyDays)?e.applyDays:[]}}
+  function stageOf(id){const p=progress(id),ev=evidenceFor(id);if(ev.recallDays.length>=1&&ev.applyDays.length>=2)return 'applied';if(ev.recallDays.length>=1)return 'recalled';return Number(p.reviews)>0?'recognised':'new'}
+  function topicMetrics(id){const arr=store.entries.filter(e=>e.topicId===id),st=arr.map(e=>stageOf(e.id));return {total:arr.length,recognised:st.filter(x=>x!=='new').length,recalled:st.filter(x=>x==='recalled'||x==='applied').length,applied:st.filter(x=>x==='applied').length}}
+  function todayActivity(){const r=(store.reviewEvents||[]).filter(e=>e.date===localDay());return {actions:r.length,unique:new Set(r.map(e=>e.entryId).filter(Boolean)).size}}
+  function recommendation(max=8){const now=localDay();const rank=e=>{const p=progress(e.id),st=stageOf(e.id);if(p.nextReview&&p.nextReview<=now)return st==='applied'?80:110;if(st==='recognised')return 90;if(st==='new')return 60;if(st==='recalled')return 45;return 10};return [...store.entries].sort((a,b)=>rank(b)-rank(a)||String(progress(a.id).lastReviewed||'').localeCompare(String(progress(b.id).lastReviewed||''))||a.phrase.localeCompare(b.phrase)).slice(0,Math.min(20,Math.max(1,max))).map(e=>e.id)}
+  function toggleFocus(){ui.focusMode=!ui.focusMode;render()}
+  function topicGrid(){return '<div class="topic-grid sw-topic-grid">'+store.topics.map(t=>{const m=topicMetrics(t.id),pct=m.total?Math.round(m.applied/m.total*100):0;return '<button type="button" class="topic-tile sw-progress-tile '+(ui.topic===t.id?'active':'')+'" data-action="topic" data-topic="'+esc(t.id)+'" aria-expanded="'+(ui.topic===t.id)+'" aria-controls="selectedTopicCollocations"><span class="topic-symbol">'+icon(t.icon||'book')+'</span><span class="sw-topic-info"><strong>'+esc(t.name)+'</strong><small>'+m.total+' cụm · '+m.recalled+' đã nhớ lại · '+m.applied+' vận dụng vững</small><span class="sw-topic-progress"><i style="width:'+pct+'%"></i></span></span></button>'}).join('')+'</div>'}
   function studyDates(){const d=new Set(store.activityDates||[]);for(const p of Object.values(store.progress))if(p.lastReviewed)d.add(p.lastReviewed);return d}
   function studyStreak(){const dates=studyDates(),day=new Date();
     if(!dates.has(localDay(day))){day.setDate(day.getDate()-1);if(!dates.has(localDay(day)))return 0}
