@@ -120,6 +120,22 @@ body{font-size:15px;line-height:1.62}
 .ai-settings-copy>p{font-size:12.5px;color:#708395;margin:0 0 10px;line-height:1.6}
 .ai-endpoint-row{display:flex;gap:8px}
 .ai-endpoint-row input{height:41px;padding:9px 12px;min-width:0;flex:1;border:1px solid #d7e3ee;border-radius:9px;background:#fff;font-size:13px;color:#385467}
+.ai-settings.state-ready{background:#f0faf5;border-color:#d5ebdc}
+.ai-settings.state-ready .ai-settings-icon{background:#dcf3e5;color:#217a56}
+.ai-settings.state-unavailable,.ai-settings.state-missing{background:#fff9f3;border-color:#f0dec7}
+.ai-settings.state-unavailable .ai-settings-icon,.ai-settings.state-missing .ai-settings-icon{background:#fff0db;color:#a56821}
+.ai-settings-copy>p{margin-bottom:7px}
+.ai-connect-source{display:inline-flex;align-items:center;gap:5px;color:#278462;font-size:12.5px;font-weight:700}
+.ai-connect-source svg{width:15px;height:15px}
+.ai-connect-actions{margin:6px 0}
+.ai-test-connection,.ai-use-default{border:0;background:transparent;padding:6px 0;color:#3579a1;font-weight:650;font-size:12.5px;cursor:pointer}
+.ai-test-connection:hover,.ai-use-default:hover{text-decoration:underline}
+.ai-advanced-config{margin-top:8px;border-top:1px solid #e2eaf0;padding-top:9px}
+.ai-advanced-config summary{font-size:12.5px;color:#6d8190;cursor:pointer}
+.ai-advanced-config>p{font-size:12px;margin:8px 0;color:#708395}
+.ai-advanced-config .ai-endpoint-row{margin-top:8px;flex-wrap:wrap}
+.ai-advanced-config .ai-endpoint-row input{min-width:190px}
+@media(max-width:480px){.ai-settings{padding:12px;gap:10px}.ai-settings-copy>strong{font-size:15px}.ai-settings-copy>p{font-size:13px}}
 .sr-only{position:absolute;width:1px;height:1px;white-space:nowrap;clip:rect(0 0 0 0);overflow:hidden}
 .ai-pending{display:flex;align-items:center;gap:10px;padding:16px;border-radius:12px;background:#eef6fc;color:#4d799a;font-size:13px;font-weight:700}
 .ai-feedback{margin-top:18px;border:1px solid #dbe8e4;border-radius:17px;padding:19px;background:white;box-shadow:0 6px 18px #254b4910}
@@ -290,7 +306,43 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   let collapsedGroups={life:false,ielts:false};
   try { const remembered=JSON.parse(localStorage.getItem(GROUPS_KEY)||'{}'); collapsedGroups={life:!!remembered.life,ielts:!!remembered.ielts}; } catch (_) {}
   const ENDPOINT_KEY='speakwise-ai-endpoint-v2';
-  let aiEndpoint='';try{aiEndpoint=localStorage.getItem(ENDPOINT_KEY)||''}catch(_){}
+  const defaultAiEndpoint=(location.protocol==='https:'||location.hostname==='localhost'||location.hostname==='127.0.0.1')
+    ? new URL('/evaluate',location.origin).href : '';
+  let endpointOverride='';
+  try{endpointOverride=localStorage.getItem(ENDPOINT_KEY)||''}catch(_){}
+  let aiEndpoint=endpointOverride||defaultAiEndpoint;
+  let aiHealthState='checking';
+  const aiStates={
+    checking:['Đang kiểm tra kết nối AI…','Đang xác minh dịch vụ chấm câu của Speakwise.'],
+    ready:['AI đã sẵn sàng','Gemini đã được cấu hình. Bạn có thể gửi câu viết hoặc ghi âm để nhận phản hồi.'],
+    missing:['AI chưa được kích hoạt','Cloudflare Worker đang hoạt động nhưng chưa nhận được GEMINI_API_KEY.'],
+    unavailable:['Chưa xác minh được kết nối AI','Không kiểm tra được dịch vụ chấm. Bạn có thể thử lại hoặc kiểm tra Cloudflare Worker.'],
+    unconfigured:['Chưa cấu hình dịch vụ AI','Mở cài đặt nâng cao bên dưới để nhập địa chỉ dịch vụ chấm.']
+  };
+  function updateAiStatus(){
+    const host=document.getElementById('aiSettingsBox');if(!host)return;
+    host.className='ai-settings state-'+aiHealthState;
+    const info=aiStates[aiHealthState]||aiStates.unavailable;
+    const title=document.getElementById('aiConnectionTitle');
+    const description=document.getElementById('aiConnectionDescription');
+    if(title)title.textContent=info[0];
+    if(description)description.textContent=info[1];
+  }
+  async function verifyAiService(){
+    const endpoint=aiEndpoint;
+    if(!endpoint){aiHealthState='unconfigured';updateAiStatus();return}
+    aiHealthState='checking';updateAiStatus();
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),10000);
+    try{
+      const url=new URL('/health',new URL(endpoint).origin);
+      const response=await fetch(url,{method:'GET',cache:'no-store',signal:controller.signal});
+      const result=await response.json();
+      if(endpoint!==aiEndpoint)return;
+      aiHealthState=response.ok&&result.ok?(result.aiReady===true?'ready':'missing'):'unavailable';
+    }catch(_){if(endpoint!==aiEndpoint)return;aiHealthState='unavailable'}
+    finally{clearTimeout(timer);updateAiStatus()}
+  }
   let recorder=null,micStream=null,recordingTimer=null,audioChunks=[];
   function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(store))}catch(e){toast('Không thể lưu trong trình duyệt. Hãy xuất bản sao dữ liệu.')}window.SpeakwiseSync?.scheduleSave?.()}
   const topic = id=>store.topics.find(t=>t.id===id);
@@ -385,7 +437,29 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       ${result.suggestedRevision?`<div class="ai-revision"><div class="eyebrow">GỢI Ý CHỈNH CÂU · GIỮ NGUYÊN Ý TƯỞNG</div><p>${esc(result.suggestedRevision)}</p></div>`:''}
       <div class="ai-feedback-footer"><span>${icon('shield')} AI có thể đánh giá sai; kiểm tra lại góp ý trước khi áp dụng.</span><button class="btn btn-primary" data-action="nextQuiz">Cụm từ tiếp theo ${icon('arrowRight')}</button></div></section>`;
   }
-  function aiSettings(){return `<div class="ai-settings"><div class="ai-settings-icon">${icon('sparkles')}</div><div class="ai-settings-copy"><strong>${aiEndpoint?'Đã lưu địa chỉ dịch vụ AI':'Cần kết nối dịch vụ AI để chấm câu'}</strong><p>${aiEndpoint?'Khi bấm chấm, câu hoặc âm thanh sẽ gửi tới dịch vụ bạn cấu hình.':'Website tĩnh không tự có AI. Triển khai Worker kèm bộ mã nguồn rồi dán đường dẫn tại đây; không nhập API key vào trình duyệt.'}</p><div class="ai-endpoint-row"><label class="sr-only" for="aiEndpoint">Địa chỉ Cloudflare Worker chấm AI</label><input id="aiEndpoint" type="url" inputmode="url" placeholder="https://your-worker.workers.dev/evaluate" value="${esc(aiEndpoint)}" autocomplete="url" spellcheck="false"/><button type="button" class="btn btn-muted" data-action="saveEndpoint">${icon('settings')} Lưu kết nối</button></div></div></div>`}
+  function aiSettings(){
+    const info=aiStates[aiHealthState]||aiStates.unavailable;
+    const automatic=!!defaultAiEndpoint&&aiEndpoint===defaultAiEndpoint;
+    return `<div class="ai-settings state-${aiHealthState}" id="aiSettingsBox">
+      <div class="ai-settings-icon">${icon('sparkles')}</div>
+      <div class="ai-settings-copy">
+        <strong id="aiConnectionTitle" role="status">${info[0]}</strong>
+        <p id="aiConnectionDescription">${info[1]}</p>
+        ${aiEndpoint?`<span class="ai-connect-source">${icon('checkCircle')} ${automatic?'Kết nối tự động, không cần nhập URL':'Kết nối tùy chỉnh'}</span>`:''}
+        <div class="ai-connect-actions"><button type="button" class="ai-test-connection" data-action="retryAiService">Kiểm tra lại kết nối</button></div>
+        <details class="ai-advanced-config" ${aiEndpoint?'':'open'}>
+          <summary>Thiết lập kết nối nâng cao</summary>
+          <p>Chỉ thay đổi nếu bạn sử dụng Worker AI khác. Không nhập Gemini API key tại đây.</p>
+          <div class="ai-endpoint-row">
+            <label class="sr-only" for="aiEndpoint">Địa chỉ dịch vụ AI chấm câu</label>
+            <input id="aiEndpoint" type="url" inputmode="url" placeholder="${esc(defaultAiEndpoint||'https://your-worker.workers.dev/evaluate')}" value="${esc(endpointOverride)}" autocomplete="url" spellcheck="false"/>
+            <button type="button" class="btn btn-muted" data-action="saveEndpoint">Lưu</button>
+          </div>
+          ${defaultAiEndpoint?`<button type="button" class="ai-use-default" data-action="resetEndpoint">Sử dụng Worker Speakwise mặc định</button>`:''}
+        </details>
+      </div>
+    </div>`;
+  }
   function sentenceEditor(){
     return `<div class="sentence-workspace"><div class="sentence-intro"><div><div class="eyebrow">USE IT IN CONTEXT</div><h3>Đặt một câu với collocation trên</h3><p>Viết hoặc nói một câu có ý nghĩa từ chính trải nghiệm của bạn. AI sẽ phản hồi cách dùng từ, ngữ pháp và độ tự nhiên.</p></div></div>
       <div class="sentence-modes" role="group" aria-label="Chọn hình thức đặt câu"><button type="button" class="${ui.sentenceMode==='write'?'active':''}" data-action="sentenceMode" data-mode="write">${icon('pen')} Viết câu</button><button type="button" class="${ui.sentenceMode==='speak'?'active':''}" data-action="sentenceMode" data-mode="speak">${icon('microphone')} Nói câu</button></div>
@@ -504,7 +578,24 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'restart':cleanupAudio();ui.view==='flashcards'?makeDeck():(ui.quiz=null,ui.quizSeen=[],ui.quizCorrect=0,ui.quizTotal=0);render();break;
       case 'quizMode':cleanupAudio();ui.quizMode=mode;ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;ui.sentenceResult=null;render();break;
       case 'sentenceMode':cleanupAudio();ui.sentenceMode=mode;ui.sentenceResult=null;render();break;
-      case 'saveEndpoint':{const value=document.getElementById('aiEndpoint')?.value.trim()||'';if(value&&!/^https:\/\/[^\s]+$/i.test(value)&&!/^http:\/\/localhost(?::\d+)?\//i.test(value)){toast('Nhập URL HTTPS của Worker, ví dụ https://xxx.workers.dev/evaluate');break}aiEndpoint=value;try{localStorage.setItem(ENDPOINT_KEY,aiEndpoint)}catch(_){toast('Không lưu được URL vào trình duyệt.')}render();toast(value?'Đã lưu đường dẫn kết nối AI.':'Đã xoá kết nối AI.');break}
+      case 'saveEndpoint':{
+        const value=document.getElementById('aiEndpoint')?.value.trim()||'';
+        if(value){
+          let url;try{url=new URL(value)}catch(_){toast('Địa chỉ AI không hợp lệ.');break}
+          if(!(url.protocol==='https:'||(url.protocol==='http:'&&url.hostname==='localhost'))||url.pathname!=='/evaluate'){
+            toast('Địa chỉ AI cần sử dụng HTTPS và kết thúc bằng /evaluate.');break;
+          }
+        }
+        endpointOverride=value;aiEndpoint=endpointOverride||defaultAiEndpoint;
+        try{if(value)localStorage.setItem(ENDPOINT_KEY,value);else localStorage.removeItem(ENDPOINT_KEY)}catch(_){}
+        render();verifyAiService();toast(value?'Đã lưu địa chỉ AI tùy chỉnh.':'Đã sử dụng kết nối tự động.');break;
+      }
+      case 'resetEndpoint':{
+        endpointOverride='';aiEndpoint=defaultAiEndpoint;
+        try{localStorage.removeItem(ENDPOINT_KEY)}catch(_){}
+        render();verifyAiService();toast('Đã sử dụng Worker Speakwise mặc định.');break;
+      }
+      case 'retryAiService':verifyAiService();break;
       case 'startRecord':startRecord();break;
       case 'stopRecord':stopRecord();break;
       case 'evaluateSentence':evaluateSentence();break;
@@ -526,6 +617,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   document.getElementById('mobileShade').addEventListener('click',()=>{document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')});
   document.getElementById('brandLink').addEventListener('click',e=>{e.preventDefault();goView('library');ui.section='all';ui.topic='all';render()});
   render();
+  verifyAiService();
   window.SpeakwiseSync?.init({store,render,toast});
 })();
 
