@@ -653,7 +653,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function closeDrawer(){ui.drawer=null;document.getElementById('drawerHost').innerHTML=''}
   function entryModal(id=null,tab='manual'){
     const e=id?store.entries.find(x=>x.id===id):null;
-    const selectedTopic=e?.topicId||(ui.topic!=='all'?ui.topic:store.topics[0]?.id)||'';
+    const selectedTopic=e?.topicId||(tab==='ai'?ui.aiForm?.topicId:null)||(ui.topic!=='all'?ui.topic:store.topics[0]?.id)||'';
     ui.modal={id:id||null,tab};
     const tabOptions=e?'':`<div class="add-tabs" role="tablist" aria-label="Cách bổ sung collocations">
       <button class="${tab==='manual'?'active':''}" type="button" data-action="modalTab" data-tab="manual">✍️ Thủ công</button>
@@ -678,9 +678,9 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       <p class="mini-disclaimer">Chủ đề mới sẽ được tạo trong thư viện cá nhân. Dữ liệu được kiểm tra trước khi lưu.</p></div>`;
     const ai=`<div class="modal-body add-panel"><h3>Tạo collocations bằng AI</h3><p>Chọn chủ đề, CEFR và số lượng. Xem lại các mục được tạo trước khi lưu vào thư viện.</p>
       <form id="generateForm"><div class="form-row"><div class="field"><label for="generateTopic">Topic</label><select id="generateTopic" name="topicId">${topicOpts}</select></div>
-      <div class="field"><label for="generateNewTopic">Hoặc topic mới (English)</label><input id="generateNewTopic" name="newTopic" maxlength="100" placeholder="e.g. Travelling abroad"/></div></div>
-      <div class="form-row"><div class="field"><label for="generateCefr">CEFR</label><select name="cefr" id="generateCefr">${['A1','A2','B1','B2','C1','C2'].map(x=>`<option value="${x}" ${x==='B1'?'selected':''}>${x}</option>`).join('')}</select></div>
-      <div class="field"><label for="generateCount">Số cụm từ</label><select id="generateCount" name="count"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></div></div>
+      <div class="field"><label for="generateNewTopic">Hoặc topic mới (English)</label><input id="generateNewTopic" name="newTopic" maxlength="100" placeholder="e.g. Travelling abroad" value="${esc(ui.aiForm?.newTopic||'')}"/></div></div>
+      <div class="form-row"><div class="field"><label for="generateCefr">CEFR</label><select name="cefr" id="generateCefr">${['A1','A2','B1','B2','C1','C2'].map(x=>`<option value="${x}" ${x===(ui.aiForm?.cefr||'B1')?'selected':''}>${x}</option>`).join('')}</select></div>
+      <div class="field"><label for="generateCount">Số cụm từ</label><select id="generateCount" name="count">${[5,10,15,20].map(n=>`<option ${n===(ui.aiForm?.count||10)?'selected':''}>${n}</option>`).join('')}</select></div></div>
       <button class="btn btn-primary" type="submit" ${ui.aiBusy?'disabled':''}>${icon('sparkles')} ${ui.aiBusy?'Đang tạo, vui lòng đợi…':'Tạo collocations'}</button></form>
       ${ui.aiError?`<div class="ai-error-inline" role="alert"><strong>Không thể tạo collocations</strong><p>${esc(ui.aiError)}</p></div>`:''}
       ${Array.isArray(ui.aiDraft)&&ui.aiDraft.length?`<div class="ai-draft"><div class="ai-draft-title"><strong>${ui.aiDraft.length} collocations đề xuất</strong><small>Kiểm tra ví dụ và chọn những mục muốn lưu</small></div>
@@ -876,6 +876,9 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'closeModal':closeModal();break;
       case 'speak':speak(id);break;
       case 'star':toggleStar(id);break;
+      case 'modalTab':if(ui.aiBusy){toast('Đang chờ AI xử lý.');break}entryModal(null,el.dataset.tab||'manual');break;
+      case 'downloadTemplate':downloadTemplate();break;
+      case 'saveAiDraft':saveAiDraft();break;
       case 'edit':entryModal(id);break;
       case 'delete':if(confirm('Bạn có chắc muốn xoá collocation này khỏi thư viện trên thiết bị?')){store.entries=store.entries.filter(x=>x.id!==id);store.deletedIds.push(id);delete store.progress[id];save();closeDrawer();render();toast('Đã xoá cụm từ.')}break;
       case 'flip':ui.flipped=!ui.flipped;render();break;
@@ -911,8 +914,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     }
   });
   document.addEventListener('input',e=>{if(e.target.id==='searchInput'){ui.query=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='recallInput')ui.recallText=e.target.value;if(e.target.id==='sentenceInput')ui.sentenceText=e.target.value});
-  document.addEventListener('change',e=>{if(e.target.id==='statusFilter'){ui.filter=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='practiceTopic'||e.target.id==='practiceScope'){cleanupAudio();ui.quizTopic=document.getElementById('practiceTopic').value;ui.quizScope=document.getElementById('practiceScope').value;ui.deck=[];ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;ui.view==='flashcards'?makeDeck():nextQuiz();render()}if(e.target.id==='entrySection')updateFormTopics()});
-  document.addEventListener('submit',e=>{if(e.target.id==='entryForm'){e.preventDefault();saveEntry(e.target)}if(e.target.id==='recallForm'){e.preventDefault();checkRecall(ui.recallText)}});
+  document.addEventListener('change',e=>{if(e.target.id==='statusFilter'){ui.filter=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='practiceTopic'||e.target.id==='practiceScope'){cleanupAudio();ui.quizTopic=document.getElementById('practiceTopic').value;ui.quizScope=document.getElementById('practiceScope').value;ui.deck=[];ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;ui.view==='flashcards'?makeDeck():nextQuiz();render()}if(e.target.id==='excelImportInput')importExcel(e.target.files?.[0]);if(e.target.matches('[data-ai-index]')){const i=Number(e.target.dataset.aiIndex);if(e.target.checked){if(!ui.aiSelected.includes(i))ui.aiSelected.push(i)}else ui.aiSelected=ui.aiSelected.filter(x=>x!==i)}});
+  document.addEventListener('submit',e=>{if(e.target.id==='entryForm'){e.preventDefault();saveEntry(e.target)}if(e.target.id==='recallForm'){e.preventDefault();checkRecall(ui.recallText)}if(e.target.id==='generateForm'){e.preventDefault();generateAiCollocations(e.target)}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeModal();document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')}if(e.key===' '&&!['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName)&&!ui.modal&&!ui.drawer&&ui.view==='flashcards'){e.preventDefault();if(ui.deck[ui.deckAt]){ui.flipped=!ui.flipped;render()}}if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-action="detail"]')){e.preventDefault();openDrawer(e.target.dataset.id)}if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('flashcard')&&ui.view==='flashcards'){e.preventDefault();ui.flipped=!ui.flipped;render()}});
   document.getElementById('addBtn').addEventListener('click',()=>entryModal());
   document.getElementById('menuToggle').addEventListener('click',()=>{document.getElementById('sidebar').classList.add('open');document.getElementById('mobileShade').classList.add('open')});
