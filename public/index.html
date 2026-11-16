@@ -471,7 +471,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function readSaved(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){return {}}}
   function combine(seedList, userList, key){const map = new Map((seedList||[]).map(e=>[e[key],e]));for(const e of (userList||[])){if(e && e[key])map.set(e[key],{...(map.get(e[key])||{}),...e})}return [...map.values()]}
   const saved=readSaved();
-  const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[],mistakes:Array.isArray(saved.mistakes)?saved.mistakes:[],settings:{dailyGoal:8,...(saved.settings||{})},lastPractice:saved.lastPractice||null,learningJourney:saved.learningJourney||null};
+  const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[],mistakes:Array.isArray(saved.mistakes)?saved.mistakes:[],deletedMistakeIds:Array.isArray(saved.deletedMistakeIds)?saved.deletedMistakeIds:[],settings:{dailyGoal:8,...(saved.settings||{})},lastPractice:saved.lastPractice||null,learningJourney:saved.learningJourney||null};
   store.entries=store.entries.filter(e=>!store.deletedIds.includes(e.id));
   const ui={view:'home',section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false,focusMode:false,journey:null,journeyReturn:'home'};
   const GROUPS_KEY='speakwise-collapsed-groups-v3';
@@ -953,7 +953,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     store.mistakes=store.mistakes.slice(0,400);save();toast('Đã lưu lỗi để luyện lại.');
   }
   function mistakesPage(){
-    const all=store.mistakes||[],open=all.filter(m=>m.status!=='resolved');
+    const all=(store.mistakes||[]).filter(m=>!store.deletedMistakeIds.includes(m.id)),open=all.filter(m=>m.status!=='resolved');
     return intro('My Mistakes','Sổ lỗi được lưu theo lựa chọn của bạn, không tự động coi mọi góp ý AI là đúng.')+
       '<div class="sw-mistakes-header"><strong>'+open.length+' lỗi cần luyện lại</strong><button class="btn btn-muted" data-nav="apply">Trở lại Ứng dụng</button></div>'+
       (all.length?all.map(m=>{
@@ -964,7 +964,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
           '<p>'+esc(m.note||'')+'</p><div class="sw-mistake-actions">'+
           (!resolved&&e?'<button class="btn btn-primary" data-action="retryMistake" data-id="'+esc(m.id)+'">Try Again</button>':'')+
           '<button class="btn btn-muted" data-action="toggleMistake" data-id="'+esc(m.id)+'">'+
-          (resolved?'Đánh dấu cần ôn':'Đã tự sửa được')+'</button></div></article>';
+          (resolved?'Đánh dấu cần ôn':'Đã tự sửa được')+'</button>'+
+          '<button class="btn btn-muted" data-action="deleteMistake" data-id="'+esc(m.id)+'">'+icon('trash')+' Xoá</button></div></article>';
       }).join(''):'<div class="empty-state"><b>Chưa có lỗi được lưu</b><p>Kiểm tra AI feedback rồi chọn Lưu lỗi cần ôn.</p></div>');
   }
   function retryMistake(id){
@@ -1169,6 +1170,12 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'saveMistake':saveCurrentMistake();break;
       case 'openMistakes':goView('mistakes');break;
       case 'retryMistake':retryMistake(id);break;
+      case 'deleteMistake':{
+        if(confirm('Xoá vĩnh viễn lỗi đã lưu này?')){
+          store.deletedMistakeIds=[...new Set([...(store.deletedMistakeIds||[]),id])];
+          store.mistakes=store.mistakes.filter(m=>m.id!==id);save();render();toast('Đã xoá lỗi đã lưu.');
+        }break;
+      }
       case 'toggleMistake':{const m=store.mistakes.find(x=>x.id===id);if(m){m.status=m.status==='resolved'?'open':'resolved';m.updatedAt=new Date().toISOString();save();render()}break}
       case 'toggleFocus':toggleFocus();break;
       case 'journeyAdvance':journeyNext();break;
