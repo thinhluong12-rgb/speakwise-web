@@ -328,6 +328,38 @@ body{font-size:15px;line-height:1.62}
 }
 @media(max-width:620px){.sw-today{padding:17px}.sw-today-header{display:block}.sw-goal-label{margin-top:14px;display:flex;align-items:center}.sw-goal-label select{margin-left:auto}}
 
+
+.sw-journey{max-width:930px;margin:0 auto}
+.sw-journey-top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:10px 0 15px;font-size:13px;font-weight:800;color:#39766b}
+.sw-journey-top>div{display:flex;gap:8px;flex-wrap:wrap}
+.sw-journey-steps{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px}
+.sw-journey-steps span{font-size:12px;font-weight:750;text-align:center;padding:10px 4px;color:#849b92;background:#f3f7f5;border:1px solid #e0ebe5;border-radius:9px}
+.sw-journey-steps span.current{color:#176e5f;border-color:#6abd9e;background:#e5f6ec}.sw-journey-steps span.complete{color:#2f977a}
+.sw-journey-bar{height:9px;background:#dfece5;border-radius:20px;overflow:hidden;margin-bottom:19px}
+.sw-journey-bar i{display:block;height:100%;background:#269683;border-radius:20px}
+.sw-journey-card{background:linear-gradient(145deg,#fff,#f0faf5);border:1px solid #cee8da;border-radius:19px;padding:32px 24px;text-align:center;min-height:230px}
+.sw-journey-label{letter-spacing:1.1px;font-size:11px;font-weight:800;color:#298a76;margin-bottom:15px}
+.sw-journey-card h2{color:#22564d;font-size:clamp(27px,4vw,38px);line-height:1.3;margin:10px 0}
+.sw-journey-ipa{color:#7a968b}.sw-journey-meaning{font-size:19px;color:#347c6a;font-weight:650;line-height:1.6}
+.sw-journey-example{background:#fff;border:1px solid #dfece6;border-radius:12px;font-style:italic;font-size:17px;line-height:1.7;color:#456e61;padding:14px;margin:19px auto;max-width:680px}
+.sw-journey-example strong{font-weight:850;color:#196a5f}
+.sw-journey-controls{display:flex;justify-content:end;align-items:center;gap:9px;flex-wrap:wrap;margin:15px 0}
+.sw-journey-recall{display:grid;gap:10px;max-width:580px;margin:15px auto;text-align:left}
+.sw-journey-recall label{color:#52786b;font-size:13px;font-weight:750}
+.sw-journey-recall input{width:100%;padding:13px 16px;border:1px solid #accfc1;border-radius:10px;font-size:16px}
+.sw-journey-recall .btn{justify-self:end}
+.sw-journey-answer{background:#f1faf4;border-radius:11px;padding:15px;margin:18px auto;max-width:600px;font-size:16px;color:#216d5d}
+.sw-journey-answer.incorrect{background:#fff8ee;color:#a56936}
+.sw-journey-apply{min-height:0;padding:22px}
+.sw-journey-apply h2{font-size:clamp(24px,3vw,30px)}
+.sw-journey-apply>p{max-width:650px;font-size:14px;line-height:1.7;margin:10px auto;color:#6e897c}
+.sw-review-badges{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:18px 0}
+.sw-review-badges span{font-size:13px;color:#54796c;border:1px solid #cce7db;background:white;border-radius:10px;padding:11px}
+.sw-journey-summary{text-align:center;background:#f5fcf7;border:1px solid #d3e9df;border-radius:18px;padding:36px 20px}
+.sw-journey-summary>svg{width:52px;height:52px;color:#229574}
+.sw-journey-summary h2{color:#1f6355}.sw-journey-summary p{color:#66887b;line-height:1.7}
+@media(max-width:620px){.sw-journey-top{display:block}.sw-journey-top>div{margin-top:10px}.sw-journey-card{padding:20px 14px}.sw-journey-steps span{font-size:11px;padding:8px 2px}}
+
 </style>
 </head>
 <body>
@@ -486,7 +518,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function toast(message){const el=document.createElement('div');el.className='toast';el.innerHTML=icon('checkCircle')+`<span>${esc(message)}</span>`;toastHost.append(el);setTimeout(()=>el.remove(),4100)}
   function renderIcons(){document.querySelectorAll('[data-icon]').forEach(el=>{el.innerHTML=icon(el.dataset.icon)})}
   function sidebar(){document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===(ui.view==='journey'?'home':ui.view==='mistakes'?'apply':ui.view)))}
-  const navNames={home:'Trang chủ',flashcards:'Flashcards',memory:'Ghi nhớ',apply:'Ứng dụng',topics:'Topic Collocations'};
+  const navNames={home:'Trang chủ',flashcards:'Flashcards',memory:'Ghi nhớ',apply:'Ứng dụng',topics:'Topic Collocations',journey:'Learning Journey',mistakes:'My Mistakes'};
   function header(){document.getElementById('breadcrumb').innerHTML='<strong>'+navNames[ui.view]+'</strong>'}
   function intro(title,subtitle='',eyebrow=''){
     return '<div class="intro"><div>'+(eyebrow?'<div class="eyebrow">'+esc(eyebrow)+'</div>':'')+'<h1 class="page-title">'+esc(title)+'</h1>'+(subtitle?'<p class="page-subtitle">'+esc(subtitle)+'</p>':'')+'</div></div>';
@@ -727,7 +759,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
         if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}
         if(recordingTimer){clearTimeout(recordingTimer);recordingTimer=null}
         if(audioChunks.length){ui.audioBlob=new Blob(audioChunks,{type:rec.mimeType||'audio/webm'});ui.audioUrl=URL.createObjectURL(ui.audioBlob)}
-        ui.recording=false;if(ui.view==='apply')render();
+        ui.recording=false;if(ui.view==='apply'||ui.view==='journey')render();
       };
       rec.start();ui.recording=true;render();
       recordingTimer=setTimeout(()=>{if(rec.state==='recording')stopRecord()},45000);
@@ -763,6 +795,117 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       toast('Đã nhận phản hồi AI và cập nhật lịch ôn.');
     }catch(err){ui.sentenceError=err.name==='AbortError'?'Dịch vụ AI phản hồi quá lâu. Vui lòng thử lại.':String(err.message||'Lỗi khi chấm.');toast('Không thể chấm: xem nguyên nhân bên dưới câu trả lời.');}
     finally{clearTimeout(timeout);ui.sentenceBusy=false;render()}
+  }
+  function startJourney(ids){
+    const valid=[...new Set((ids||[]).filter(id=>store.entries.some(e=>e.id===id)))].slice(0,20);
+    if(!valid.length){toast('Chưa có collocations để luyện.');return}
+    ui.journey={ids:valid,at:0,step:'learn',recall:null,startedAt:Date.now()};
+    ui.view='journey';ui.focusMode=true;ui.sentenceMode='write';
+    ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceText='';
+    ui.quiz={answerId:valid[0],options:[],selected:null,isCorrect:null};
+    store.learningJourney={ids:valid,at:0,step:'learn',createdAt:new Date().toISOString()};
+    save();render();window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function syncJourneyProgress(){
+    if(!ui.journey)return;
+    store.learningJourney={
+      ids:ui.journey.ids,at:ui.journey.at,step:ui.journey.step,
+      createdAt:store.learningJourney?.createdAt||new Date().toISOString()
+    };
+    save();
+  }
+  function journeyNext(){
+    if(!ui.journey)return;
+    const j=ui.journey,current=store.entries.find(e=>e.id===j.ids[j.at]);
+    if(j.step==='learn')j.step='recall';
+    else if(j.step==='recall'){
+      if(!j.recall?.checked&&current){j.recall={checked:true,correct:false,answer:''};
+        review(current.id,'hard',{action:'recall',correct:false})}
+      j.step='apply';
+    }else if(j.step==='apply'){
+      cleanupAudio();j.step='review';
+    }else if(j.step==='review'){
+      j.at++;j.recall=null;
+      if(j.at>=j.ids.length){j.step='done';delete store.learningJourney;save();}
+      else {j.step='learn';ui.quiz={answerId:j.ids[j.at],options:[],selected:null,isCorrect:null}}
+      ui.sentenceMode='write';ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceText='';
+    }
+    if(j.step!=='done')syncJourneyProgress();
+    render();window.scrollTo({top:0,behavior:'smooth'});
+  }
+  function journeyCheckRecall(answer,skipped=false){
+    const j=ui.journey,entry=store.entries.find(e=>e.id===j?.ids[j.at]);
+    if(!j||j.step!=='recall'||j.recall?.checked||!entry)return;
+    const correct=!skipped&&normalize(answer)===normalize(entry.phrase);
+    j.recall={checked:true,correct,answer:String(answer||'').slice(0,200)};
+    review(entry.id,correct?'good':'hard',{action:'recall',correct});
+    render();
+  }
+  function renderJourney(){
+    const j=ui.journey;
+    if(!j)return intro('Learning Journey')+'<p>Chưa có phiên học.</p><button data-nav="home" class="btn btn-primary">Trang chủ</button>';
+    const total=j.ids.length,entry=store.entries.find(e=>e.id===j.ids[j.at]);
+    if(j.step==='done'){
+      const stats=j.ids.reduce((out,id)=>{out[stageOf(id)]++;return out},{new:0,recognised:0,recalled:0,applied:0});
+      return intro('Hoàn thành phiên học','Bạn đã đi qua các bước học. Các lần nhớ lại và vận dụng đúng sẽ được tiếp tục theo dõi ở các buổi sau.')+
+        '<section class="sw-journey-summary">'+icon('checkCircle')+'<h2>'+total+' collocations đã luyện</h2><p>Đã nhận diện: '+stats.recognised+
+        ' · Đã nhớ lại: '+stats.recalled+' · Vận dụng vững: '+stats.applied+'</p>'+
+        '<div class="sw-journey-controls"><button class="btn btn-primary" data-nav="home">Về Trang chủ</button>'+
+        '<button class="btn btn-muted" data-action="openMistakes">Xem sổ lỗi</button></div></section>';
+    }
+    if(!entry)return intro('Learning Journey')+'<p>Collocation không còn trong thư viện.</p><button class="btn btn-primary" data-action="journeyAdvance">Tiếp theo</button>';
+    const stepIndex={learn:0,recall:1,apply:2,review:3}[j.step]||0;
+    const overall=Math.round((j.at+stepIndex/4)/Math.max(1,total)*100);
+    const prefix=intro('Learning Journey','Học → Nhớ lại → Vận dụng → Ôn tập. Bạn có thể bỏ qua một bước khi cần.');
+    const controls='<div class="sw-journey-top"><span>Cụm '+(j.at+1)+' / '+total+'</span>'+
+      '<div><button class="btn btn-muted" data-action="toggleFocus">'+(ui.focusMode?'Thoát Focus':'Focus Mode')+'</button>'+
+      '<button class="btn btn-muted" data-nav="home">Lưu & Thoát</button></div></div>';
+    const steps='<div class="sw-journey-steps">'+['Learn','Recall','Apply','Review'].map((name,i)=>
+      '<span class="'+(i===stepIndex?'current':i<stepIndex?'complete':'')+'">'+name+'</span>').join('')+'</div>'+
+      '<div class="sw-journey-bar" role="progressbar" aria-label="Tiến độ phiên học" aria-valuenow="'+overall+
+      '" aria-valuemin="0" aria-valuemax="100"><i style="width:'+overall+'%"></i></div>';
+    let section='';
+    if(j.step==='learn')section='<div class="sw-journey-card"><div class="sw-journey-label">LEARN IN CONTEXT</div>'+
+      '<h2>'+esc(entry.phrase)+'</h2>'+(entry.ipa?'<p class="sw-journey-ipa">'+esc(entry.ipa)+'</p>':'')+
+      '<p class="sw-journey-meaning">'+esc(entry.meaning)+'</p>'+
+      '<div class="sw-journey-example">'+exampleFormat(entry)+'</div>'+
+      '<button class="btn btn-muted" data-action="speak" data-id="'+esc(entry.id)+'">'+icon('volume')+' Nghe phát âm</button></div>'+
+      '<div class="sw-journey-controls"><button class="btn btn-primary" data-action="journeyAdvance">Tiếp tục: Recall '+icon('arrowRight')+'</button></div>';
+    if(j.step==='recall'){
+      section='<div class="sw-journey-card"><div class="sw-journey-label">RECALL WITHOUT LOOKING</div>'+
+        '<p class="sw-journey-meaning">'+esc(entry.meaning)+'</p>'+
+        (!j.recall?.checked?
+          '<form id="journeyRecallForm" class="sw-journey-recall"><label for="journeyRecallInput">Gõ collocation tiếng Anh từ trí nhớ</label>'+
+          '<input id="journeyRecallInput" type="text" autocomplete="off" maxlength="200" placeholder="Nhập collocation..."/>'+
+          '<button type="submit" class="btn btn-primary">Kiểm tra</button></form>'+
+          '<p class="sw-small">Không dùng gợi ý từ thẻ trước khi trả lời.</p>':
+          '<div class="sw-journey-answer '+(j.recall.correct?'correct':'incorrect')+'">'+
+          (j.recall.correct?'Nhớ chính xác!':'Đáp án để so sánh:')+
+          ' <strong>'+esc(entry.phrase)+'</strong></div>')+'</div>'+
+        '<div class="sw-journey-controls">'+(!j.recall?.checked?'<button class="btn btn-muted" data-action="journeySkipRecall">Chưa nhớ</button>':'')+
+        '<button class="btn btn-primary" data-action="journeyAdvance">Tiếp tục: Apply '+icon('arrowRight')+'</button></div>';
+    }
+    if(j.step==='apply'){
+      ui.quiz={answerId:entry.id,options:[],selected:null,isCorrect:null};
+      section='<div class="sw-journey-card sw-journey-apply"><div class="sw-journey-label">USE IT IN CONTEXT</div>'+
+        '<h2>'+esc(entry.phrase)+'</h2><p class="sw-journey-meaning">'+esc(entry.meaning)+'</p>'+
+        '<p>Hãy nói hoặc viết một tình huống thực tế liên quan đến <strong>'+esc(topic(entry.topicId)?.name||'topic này')+
+        '</strong> và sử dụng collocation một cách tự nhiên.</p></div>'+
+        '<div class="sw-skill-tabs"><button data-action="sentenceMode" data-mode="write" class="'+(ui.sentenceMode==='write'?'active':'')+'">'+icon('pen')+' Luyện viết</button>'+
+        '<button data-action="sentenceMode" data-mode="speak" class="'+(ui.sentenceMode==='speak'?'active':'')+'">'+icon('microphone')+' Luyện nói</button></div>'+
+        sentenceEditor()+'<div class="sw-journey-controls"><button class="btn btn-muted" data-action="journeyAdvance">Bỏ qua Apply</button></div>';
+    }
+    if(j.step==='review'){
+      const level=stageOf(entry.id),p=progress(entry.id);
+      section='<div class="sw-journey-card"><div class="sw-journey-label">REVIEW & REFLECT</div><h2>'+esc(entry.phrase)+'</h2>'+
+        '<div class="sw-review-badges"><span>Trạng thái: <strong>'+stageNames[level]+'</strong></span>'+
+        '<span>Nhớ lại: <strong>'+(j.recall?.correct?'Đúng':'Chưa đúng / bỏ qua')+'</strong></span>'+
+        '<span>Lần ôn tới: <strong>'+esc(p.nextReview||'Chưa có lịch')+'</strong></span></div>'+
+        '<p class="sw-small">Một lượt đúng chưa đủ để gọi là thành thạo. Hệ thống cần bằng chứng qua nhiều ngày.</p></div>'+
+        '<div class="sw-journey-controls"><button class="btn btn-primary" data-action="journeyAdvance">'+
+        (j.at+1>=total?'Xem tổng kết':'Cụm từ tiếp theo')+' '+icon('arrowRight')+'</button></div>';
+    }
+    return prefix+'<section class="sw-journey">'+controls+steps+section+'</section>';
   }
   function saveCurrentMistake(){
     const result=ui.sentenceResult,entry=store.entries.find(e=>e.id===ui.quiz?.answerId);
@@ -998,6 +1141,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'retryMistake':retryMistake(id);break;
       case 'toggleMistake':{const m=store.mistakes.find(x=>x.id===id);if(m){m.status=m.status==='resolved'?'open':'resolved';save();render()}break}
       case 'toggleFocus':toggleFocus();break;
+      case 'journeyAdvance':journeyNext();break;
+      case 'journeySkipRecall':journeyCheckRecall('',true);break;
       case 'startToday':startJourney(recommendation(Number(store.settings.dailyGoal)||8));break;
       case 'entryTab':entryModal(null,el.dataset.tab);break;
       case 'selectExcel':document.getElementById('importFile').click();break;
@@ -1054,7 +1199,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   });
   document.addEventListener('input',e=>{if(e.target.id==='searchInput'){ui.query=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='recallInput')ui.recallText=e.target.value;if(e.target.id==='sentenceInput')ui.sentenceText=e.target.value});
   document.addEventListener('change',e=>{if(e.target.id==='statusFilter'){ui.filter=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='practiceTopic'||e.target.id==='practiceScope'){cleanupAudio();ui.quizTopic=document.getElementById('practiceTopic').value;ui.quizScope=document.getElementById('practiceScope').value;ui.deck=[];ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;ui.view==='flashcards'?makeDeck():nextQuiz();render()}if(e.target.id==='dailyGoalSelect'){store.settings.dailyGoal=Number(e.target.value)||8;save();render()}if(e.target.id==='entryTopic')updateFormTopics();if(e.target.id==='aiTopicSelect'){const box=document.getElementById('aiNewTopicField');if(box)box.hidden=e.target.value!=='__new__'}});
-  document.addEventListener('submit',e=>{if(e.target.id==='entryForm'){e.preventDefault();saveEntry(e.target)}if(e.target.id==='recallForm'){e.preventDefault();checkRecall(ui.recallText)}if(e.target.id==='aiCreateForm'){e.preventDefault();generateCollocations()}});
+  document.addEventListener('submit',e=>{if(e.target.id==='entryForm'){e.preventDefault();saveEntry(e.target)}if(e.target.id==='recallForm'){e.preventDefault();checkRecall(ui.recallText)}if(e.target.id==='aiCreateForm'){e.preventDefault();generateCollocations()}if(e.target.id==='journeyRecallForm'){e.preventDefault();journeyCheckRecall(document.getElementById('journeyRecallInput')?.value||'')}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeModal();document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')}if(e.key===' '&&!['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName)&&!ui.modal&&!ui.drawer&&ui.view==='flashcards'){e.preventDefault();if(ui.deck[ui.deckAt]){ui.flipped=!ui.flipped;render()}}if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-action="detail"]')){e.preventDefault();openDrawer(e.target.dataset.id)}if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('flashcard')&&ui.view==='flashcards'){e.preventDefault();ui.flipped=!ui.flipped;render()}});
   document.getElementById('addBtn').addEventListener('click',()=>entryModal());
   document.getElementById('importFile').addEventListener('change',e=>{importCollocationsFile(e.target.files?.[0]);e.target.value='';});
