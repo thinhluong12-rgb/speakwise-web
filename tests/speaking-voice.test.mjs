@@ -12,8 +12,9 @@ test('Voice endpoints require a server-verified adult account', () => {
   assert.match(worker, /\/voice\/analyze/);
 });
 
-test('daily Voice Mode cap rejects the sixth session', () => {
-  assert.match(worker, /usageRows\.length\s*>=\s*5/);
+test('session creation is adult-gated and concurrency-safe in the database', () => {
+  assert.match(worker, /rpc\/start_speakwise_voice_session/);
+  assert.match(worker, /DAILY_VOICE_LIMIT/);
 });
 
 test('browser uses WebRTC and never receives the standard API key', () => {
@@ -29,4 +30,17 @@ test('analysis does not claim to assess pronunciation from transcript alone', ()
 
 test('transcript storage metadata states that raw audio is not stored', () => {
   assert.match(browser, /raw_audio_stored:false/);
+});
+
+test('browser requests server authorization before opening the microphone', () => {
+  const authorize = browser.indexOf("post('/voice/session',c)");
+  const microphone = browser.indexOf("navigator.mediaDevices.getUserMedia");
+  assert.ok(authorize >= 0 && microphone > authorize);
+  assert.doesNotMatch(browser, /from\('speakwise_voice_sessions'\)\.insert/);
+});
+
+test('analysis rejects evidence and corrections absent from the learner transcript', () => {
+  assert.match(worker, /learnerEvidence\.includes\(normalizeEvidence\(x\.quote\)\)/);
+  assert.match(worker, /learnerEvidence\.includes\(normalizeEvidence\(x\.original\)\)/);
+  assert.match(worker, /generated\.modelUsed/);
 });
