@@ -1132,7 +1132,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     if(ui.audioUrl){URL.revokeObjectURL(ui.audioUrl);ui.audioUrl=null}
   }
   async function startRecord(){
-    if(ui.sentenceBusy)return;
+    if(ui.sentenceBusy||ui.speakingBusy)return;
     if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){toast('Trình duyệt chưa hỗ trợ ghi âm. Hãy mở qua HTTPS/localhost bằng Chrome hoặc Edge.');return}
     try{
       cleanupAudio();micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
