@@ -6,6 +6,7 @@ const worker = await readFile(new URL('../ai-worker.js', import.meta.url), 'utf8
 const browser = await readFile(new URL('../public/speaking-voice.js', import.meta.url), 'utf8');
 const migration = await readFile(new URL('../supabase/migrations/20261117094612_secure_voice_session_creation_and_daily_quota.sql', import.meta.url), 'utf8');
 const quotaMigration = await readFile(new URL('../supabase/migrations/20261117094951_voice_quota_trigger_and_invoker_rpc.sql', import.meta.url), 'utf8');
+const rlsMigration = await readFile(new URL('../supabase/migrations/20261117095055_fix_voice_session_insert_policy_initplan.sql', import.meta.url), 'utf8');
 
 test('Voice endpoints require a server-verified adult account', () => {
   assert.match(worker, /app_metadata\?\.adult_verified\s*===\s*true/);
@@ -71,4 +72,9 @@ test('quota ledger is enforced by a non-callable private trigger function', () =
   assert.match(quotaMigration, /before insert on public\.speakwise_voice_sessions/i);
   assert.match(quotaMigration, /revoke all on function private\.enforce_speakwise_voice_daily_quota\(\) from public, anon, authenticated/i);
   assert.match(quotaMigration, /new\.started_at := pg_catalog\.now\(\)/);
+});
+
+test('voice session insert RLS wraps auth claims in an initplan', () => {
+  assert.match(rlsMigration, /\(select auth\.uid\(\)\)/);
+  assert.match(rlsMigration, /\(\(select auth\.jwt\(\)\) -> 'app_metadata'/);
 });
