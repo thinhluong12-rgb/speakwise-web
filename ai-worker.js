@@ -8,6 +8,32 @@ const reply=(value,status,origin)=>new Response(JSON.stringify(value),{status,he
 const limit=(x,n=1400)=>String(x||'').slice(0,n);
 const score=x=>Number.isFinite(Number(x))?Math.max(0,Math.min(100,Math.round(Number(x)))):null;
 const isGeminiLocationError=(status,message)=>status===400&&/FAILED_PRECONDITION|user location is not supported|location (is )?not supported|unsupported location/i.test(String(message||''));
+const WORKERS_AI_TEXT_MODEL='@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+const workersAiJson=async(env,prompt,maxTokens=1800)=>{
+ if(!env.AI||typeof env.AI.run!=='function')throw new Error('Thiếu Workers AI binding (AI).');
+ const result=await env.AI.run(WORKERS_AI_TEXT_MODEL,{
+  messages:[
+   {role:'system',content:'You are a precise English-learning tutor. Return only a valid JSON object matching the requested structure. Do not add markdown.'},
+   {role:'user',content:prompt}
+  ],
+  response_format:{type:'json_object'},
+  max_tokens:maxTokens,
+  temperature:0.2
+ });
+ const raw=typeof result==='string'?result:(result?.response||result?.output_text||result?.text||'');
+ if(!raw)throw new Error('Workers AI không trả về nội dung.');
+ const clean=String(raw).replace(/^\\`\\`\\`(?:json)?\\s*/i,'').replace(/\\s*\\`\\`\\`$/,'').trim();
+ return JSON.parse(clean);
+};
+const workersAiTranscribe=async(env,audioBase64)=>{
+ if(!env.AI||typeof env.AI.run!=='function')throw new Error('Thiếu Workers AI binding (AI).');
+ const result=await env.AI.run('@cf/openai/whisper-large-v3-turbo',{
+  audio:audioBase64,task:'transcribe',language:'en'
+ });
+ const transcript=String(result?.text||result?.transcription||'').trim();
+ if(!transcript)throw new Error('Whisper không tạo được bản chép lời.');
+ return transcript;
+};
 export default {
  async fetch(req,env) {
   const url=new URL(req.url),path=url.pathname;
@@ -16,7 +42,7 @@ export default {
   const incoming=req.headers.get('origin');
   if(incoming&&incoming!==allowed)return new Response('Origin not allowed',{status:403});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:headers(allowed)});
-  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY,model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash'},200,allowed);
+  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY||!!env.AI?.run,providers:{gemini:!!env.GEMINI_API_KEY,workersAI:!!env.AI?.run},model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash',workersAIModel:WORKERS_AI_TEXT_MODEL},200,allowed);
   if(!['/evaluate','/generate','/hint'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
   if(!env.GEMINI_API_KEY)return reply({error:'AI chưa được cấu hình: thiếu GEMINI_API_KEY.'},503,allowed);
   try{
@@ -101,6 +127,16 @@ export default {
        }
        if(i<models.length-1)await new Promise(resolve=>setTimeout(resolve,350));
      }
+     if(!parsed&&lastError?.code==='GEMINI_LOCATION_UNSUPPORTED'&&env.AI?.run){
+       try{
+         parsed=await workersAiJson(env,prompt,1400);
+         modelUsed='Cloudflare Workers AI ('+WORKERS_AI_TEXT_MODEL+')';
+         attempts.push({model:WORKERS_AI_TEXT_MODEL,provider:'workers-ai',status:200});
+       }catch(fallbackError){
+         attempts.push({model:WORKERS_AI_TEXT_MODEL,provider:'workers-ai',status:'error'});
+         lastError={...lastError,fallbackError:limit(fallbackError?.message||'Workers AI fallback failed',180)};
+       }
+     }
      if(!parsed)return reply({...lastError,attempts,elapsedMs:Date.now()-started},lastError?.status===504?504:lastError?.status===503?503:502,allowed);
      const hints=(Array.isArray(parsed.hints)?parsed.hints:[]).slice(0,3).map(h=>({
        situation:limit(h?.situation,220).trim(),
@@ -147,6 +183,24 @@ export default {
        detail=detail.replace(/AIza[A-Za-z0-9_-]{20,}/g,'[REDACTED]');
        const locationUnsupported=isGeminiLocationError(response.status,(data?.error?.status||'')+' '+detail);
        if(locationUnsupported)console.warn('SpeakWise /generate location restriction',JSON.stringify({code:'GEMINI_LOCATION_UNSUPPORTED',upstreamStatus:response.status,model}));
+       if(locationUnsupported&&env.AI?.run){
+         try{
+           const generated=await workersAiJson(env,prompt,5500);
+           const unique=new Set();
+           const entries=(Array.isArray(generated.entries)?generated.entries:[]).slice(0,count).map(x=>({
+             phrase:limit(x?.phrase,180).trim(),meaning:limit(x?.meaning,240).trim(),
+             example:limit(x?.example,1000).trim(),note:limit(x?.note,500).trim()
+           })).filter(x=>{
+             const key=x.phrase.toLowerCase();
+             if(x.phrase.length<3||!x.meaning||!x.example||!x.phrase.includes(' ')||unique.has(key))return false;
+             unique.add(key);return true;
+           });
+           if(entries.length)return reply({entries,modelUsed:'Cloudflare Workers AI ('+WORKERS_AI_TEXT_MODEL+')',requested:count,generated:entries.length},200,allowed);
+           throw new Error('Workers AI không trả về collocations hợp lệ.');
+         }catch(fallbackError){
+           return reply({error:'Gemini bị giới hạn vị trí và Workers AI fallback chưa xử lý được yêu cầu.',code:'AI_FALLBACK_FAILED',detail:limit(fallbackError?.message||'',220)},503,allowed);
+         }
+       }
        return reply({
          error:locationUnsupported?'Gemini hiện từ chối request do điều kiện vị trí của kết nối máy chủ.':'Gemini không tạo được collocations ('+response.status+').',
          code:locationUnsupported?'GEMINI_LOCATION_UNSUPPORTED':'GEMINI_GENERATE_ERROR',
@@ -194,7 +248,7 @@ export default {
        .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi,'[email ẩn]')
        .replace(/\s+/g,' ').trim();
    };
-   let payload=null,modelUsed=null,lastError=null;
+   let payload=null,modelUsed=null,lastError=null,workerTranscript='';
    for(let i=0;i<models.length;i++){
      const selected=models[i],began=Date.now();
      const isLite=selected.includes('flash-lite');
@@ -258,6 +312,24 @@ export default {
      // One fallback on 404 (model inaccessible), 5xx, network error or timeout.
      if(i<models.length-1)await new Promise(resolve=>setTimeout(resolve,500));
    }
+   if(!payload&&lastError?.code==='GEMINI_LOCATION_UNSUPPORTED'&&env.AI?.run){
+     try{
+       if(mode==='speak')workerTranscript=await workersAiTranscribe(env,b.audioBase64);
+       const workersPrompt=mode==='speak'
+         ?prompt.replace('In speech mode transcribe heard speech accurately, including errors; never invent a transcript.','In speech mode, use the supplied Whisper transcript exactly and do not invent words.')
+             .replace('and if speech pronunciation, each 0–100.','Do not score pronunciation from a transcript; set pronunciation to null.')
+             +' Whisper transcript: '+JSON.stringify(workerTranscript)+'. Preserve the exact transcript in the transcript field.'
+         :prompt;
+       const evaluated=await workersAiJson(env,workersPrompt,mode==='speak'?1900:1400);
+       if(mode==='speak'&&!evaluated.transcript)evaluated.transcript=workerTranscript;
+       payload={candidates:[{content:{parts:[{text:JSON.stringify(evaluated)}]}}]};
+       modelUsed='Cloudflare Workers AI ('+WORKERS_AI_TEXT_MODEL+(mode==='speak'?' + Whisper':'')+')';
+       attempts.push({model:WORKERS_AI_TEXT_MODEL,provider:'workers-ai',status:200});
+     }catch(fallbackError){
+       attempts.push({model:WORKERS_AI_TEXT_MODEL,provider:'workers-ai',status:'error'});
+       lastError={...lastError,fallbackError:limit(fallbackError?.message||'Workers AI fallback failed',180)};
+     }
+   }
    if(!payload){
      const error=lastError||{status:503,error:'Gemini không có phản hồi.',code:'GEMINI_UNKNOWN',help:'Thử lại sau.'};
      return reply({
@@ -273,7 +345,7 @@ export default {
    const d=o.dimensions||{}, dims={targetUsage:score(d.targetUsage),grammar:score(d.grammar),naturalness:score(d.naturalness),clarity:score(d.clarity)};
    if(mode==='speak'&&d.pronunciation!=null)dims.pronunciation=score(d.pronunciation);
    if(score(o.score)===null||Object.values(dims).some(x=>x===null))return reply({error:'AI chưa trả về điểm hợp lệ.'},502,allowed);
-   const result={score:score(o.score),dimensions:dims,transcript:mode==='speak'?limit(o.transcript,2000):'',strengths:(Array.isArray(o.strengths)?o.strengths:[]).slice(0,4).map(x=>limit(x,300)),improvements:(Array.isArray(o.improvements)?o.improvements:[]).slice(0,4).map(x=>limit(x,300)),highlights:(Array.isArray(o.highlights)?o.highlights:[]).slice(0,12).filter(x=>x&&['good','improve'].includes(x.label)&&x.text).map(x=>({text:limit(x.text,180),label:x.label})),suggestedRevision:limit(o.suggestedRevision,2000)};
+   const result={score:score(o.score),dimensions:dims,transcript:mode==='speak'?limit(o.transcript||workerTranscript,2000):'',strengths:(Array.isArray(o.strengths)?o.strengths:[]).slice(0,4).map(x=>limit(x,300)),improvements:(Array.isArray(o.improvements)?o.improvements:[]).slice(0,4).map(x=>limit(x,300)),highlights:(Array.isArray(o.highlights)?o.highlights:[]).slice(0,12).filter(x=>x&&['good','improve'].includes(x.label)&&x.text).map(x=>({text:limit(x.text,180),label:x.label})),suggestedRevision:limit(o.suggestedRevision,2000)};
    return reply({result,modelUsed,elapsedMs:Date.now()-totalStart},200,allowed);
   }catch(e){return reply({error:e.name==='AbortError'?'AI phản hồi quá lâu.':'Không thể chấm: '+limit(e.message,180)},502,allowed)}
  }
