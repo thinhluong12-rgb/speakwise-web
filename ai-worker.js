@@ -85,13 +85,13 @@ const runVoiceAnalysis=async(env,prompt)=>{
    const data=await response.json().catch(()=>({}));
    if(response.ok){
     const raw=(data.candidates?.[0]?.content?.parts||[]).map(x=>x.text||'').join('').trim().replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,'');
-    try{return JSON.parse(raw)}catch(e){lastError='Gemini returned invalid JSON';}
+    try{return {report:JSON.parse(raw),modelUsed:'Gemini'}}catch(e){lastError='Gemini returned invalid JSON';}
    }else lastError=limit(data?.error?.message||('Gemini HTTP '+response.status),220);
   }catch(e){lastError=controller.signal.aborted?'Gemini analysis timed out':describeAIError(e)}
   finally{clearTimeout(timer)}
  }
  if(env.AI?.run){
-  try{return await workersAiJson(env,prompt,2200)}
+  try{return {report:await workersAiJson(env,prompt,2200),modelUsed:'Cloudflare Workers AI'}}
   catch(e){lastError=(lastError?lastError+'; ':'')+describeAIError(e)}
  }
  throw new Error(lastError||'No analysis provider is configured.');
@@ -203,15 +203,23 @@ export default {
      if(!turns.some(t=>t.speaker==='user'&&t.status!=='partial'))return reply({error:'Chưa có câu trả lời đủ nội dung để phân tích.'},400,allowed);
      const prompt=voiceAnalysisPrompt(sessions[0].topic,sessions[0].cefr_level,turns);
      try{
-       const report=await runVoiceAnalysis(env,prompt);
+       const generated=await runVoiceAnalysis(env,prompt);
+       const report=generated?.report;
+       if(!report||typeof report!=='object'||Array.isArray(report))throw new Error('Analysis provider returned an invalid report structure.');
        const criteria=report.criteria&&typeof report.criteria==='object'?report.criteria:{};
-       const cleanCriterion=c=>({
-         status:['observed','insufficient_evidence'].includes(c?.status)?c.status:'insufficient_evidence',
-         summary:limit(c?.summary,700),
-         evidence:(Array.isArray(c?.evidence)?c.evidence:[]).slice(0,3).map(x=>({quote:limit(x?.quote,300),interpretation:limit(x?.interpretation,350)})).filter(x=>x.quote),
-         confidence:['low','medium','high'].includes(c?.confidence)?c.confidence:'low',
-         next_action:limit(c?.next_action,350)
-       });
+       const normalizeEvidence=value=>String(value||'').toLowerCase().replace(/\\s+/g,' ').trim();
+       const learnerEvidence=normalizeEvidence(turns.filter(t=>t.speaker==='user'&&t.status!=='partial').map(t=>t.text).join(' '));
+       const cleanCriterion=c=>{
+         const evidence=(Array.isArray(c?.evidence)?c.evidence:[]).slice(0,3).map(x=>({quote:limit(x?.quote,300),interpretation:limit(x?.interpretation,350)}))
+           .filter(x=>x.quote&&normalizeEvidence(x.quote)&&learnerEvidence.includes(normalizeEvidence(x.quote)));
+         return {
+           status:evidence.length&&c?.status==='observed'?'observed':'insufficient_evidence',
+           summary:limit(c?.summary,700),
+           evidence,
+           confidence:evidence.length&&['low','medium','high'].includes(c?.confidence)?c.confidence:'low',
+           next_action:limit(c?.next_action,350)
+         };
+       };
 
        report.criteria={
          fluency_coherence:cleanCriterion(criteria.fluency_coherence),
@@ -222,9 +230,10 @@ export default {
        report.overall_summary=limit(report.overall_summary,1200);
        report.strengths=(Array.isArray(report.strengths)?report.strengths:[]).slice(0,4).map(x=>limit(x,300));
        report.priority_improvements=(Array.isArray(report.priority_improvements)?report.priority_improvements:[]).slice(0,4).map(x=>limit(x,300));
-       report.corrections=(Array.isArray(report.corrections)?report.corrections:[]).slice(0,5).map(x=>({original:limit(x?.original,300),suggested:limit(x?.suggested,300),explanation:limit(x?.explanation,400)})).filter(x=>x.original&&x.suggested);
+       report.corrections=(Array.isArray(report.corrections)?report.corrections:[]).slice(0,5).map(x=>({original:limit(x?.original,300),suggested:limit(x?.suggested,300),explanation:limit(x?.explanation,400)}))
+         .filter(x=>x.original&&x.suggested&&learnerEvidence.includes(normalizeEvidence(x.original)));
        report.practice_plan=(Array.isArray(report.practice_plan)?report.practice_plan:[]).slice(0,3).map(x=>limit(x,400));
-       return reply({report,modelUsed:env.GEMINI_API_KEY?'Gemini':'Cloudflare Workers AI'},200,allowed);
+       return reply({report,modelUsed:generated.modelUsed||'AI provider'},200,allowed);
      }catch(error){
        return reply({error:'Không thể tạo báo cáo Speaking.',detail:limit(error.message,260)},503,allowed);
      }
