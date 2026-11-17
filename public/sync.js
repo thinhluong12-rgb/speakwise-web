@@ -10,7 +10,7 @@
  function dialog(){
   let host=$('speakwiseSyncHost');
   if(!host){host=document.createElement('div');host.id='speakwiseSyncHost';document.body.append(host);}
-  host.innerHTML='<div class="sw-sync-shade"></div><div class="sw-sync-modal" role="dialog" aria-modal="true"><button id="swSyncClose" type="button" class="sw-sync-close" aria-label="Đóng">×</button><h2>Đồng bộ Speakwise</h2><p id="swSyncMessage"></p><div id="swSyncControls"></div><small>Dữ liệu riêng tư cần Supabase Row Level Security. Không sử dụng service_role key trên trình duyệt.</small></div>';
+  host.innerHTML='<div class="sw-sync-shade"></div><div class="sw-sync-modal" role="dialog" aria-modal="true"><button id="swSyncClose" type="button" class="sw-sync-close" aria-label="Đóng">×</button><h2>Tài khoản Speakwise</h2><p id="swSyncMessage"></p><div id="swSyncControls"></div><small>Dữ liệu riêng tư cần Supabase Row Level Security. Không sử dụng service_role key trên trình duyệt.</small></div>';
   host.classList.add('open');
   host.querySelector('.sw-sync-shade').addEventListener('click',()=>host.classList.remove('open'));
   $('swSyncClose').addEventListener('click',()=>host.classList.remove('open'));
@@ -18,7 +18,7 @@
   if(!cfg.supabaseUrl||!cfg.supabasePublishableKey){message.textContent='Website hiện lưu dữ liệu trên thiết bị; chưa có dự án Supabase riêng.';return;}
   if(!api){message.textContent='Chưa kết nối được Supabase. Kiểm tra config.js và đường truyền.';return;}
   if(!user){
-   message.textContent='Đăng nhập bằng liên kết email để đồng bộ tiến độ.';
+   message.textContent='Đăng nhập bằng email để mở khóa đồng bộ tiến độ và các tính năng dành cho tài khoản.';
    body.innerHTML='<label>Email <input id="swSyncEmail" type="email" autocomplete="email" placeholder="email@example.com"/></label><button type="button" class="btn btn-primary" id="swSyncLogin">Gửi liên kết đăng nhập</button>';
    $('swSyncLogin').addEventListener('click',async()=>{
     const email=$('swSyncEmail').value.trim();
@@ -168,11 +168,11 @@
   const {data,error}=await api.auth.getSession();
   if(error){tell(error.message);return;}
   user=data?.session?.user||null;
-  if(user){await load();scheduleSave()}else label('Đồng bộ');
+  if(user){await load();scheduleSave()}else label('Đăng nhập');
   api.auth.onAuthStateChange((event,session)=>{
    const was=user?.id;user=session?.user||null;
    if(user&&user.id!==was){load().then(scheduleSave)}
-   else if(!user)label('Đồng bộ');
+   else if(!user)label('Đăng nhập');
   });
  }
  window.SpeakwiseSync={init,scheduleSave};
