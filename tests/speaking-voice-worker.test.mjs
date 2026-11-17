@@ -129,3 +129,52 @@ test('Voice endpoints enforce the configured origin and POST method', async () =
   });
   assert.equal((await worker.fetch(wrongMethod, baseEnv)).status, 405);
 });
+
+
+test('Gemini Live token endpoint rejects unauthenticated and unverified accounts before contacting Google', async t => {
+  let googleCalls = 0;
+  t.mock.method(globalThis, 'fetch', async url => {
+    const target = String(url);
+    if (target.includes('/auth/v1/user')) return json({ id: 'minor-user', app_metadata: { adult_verified: false } });
+    if (target.includes('generativelanguage.googleapis.com')) googleCalls++;
+    throw new Error('Unexpected network request: ' + target);
+  });
+  const env = { ...baseEnv, GEMINI_API_KEY: 'gemini-test-placeholder' };
+  const response = await worker.fetch(request('/voice/gemini-token'), env);
+  assert.equal(response.status, 403);
+  assert.equal(googleCalls, 0);
+});
+
+test('Gemini Live endpoint issues a short-lived constrained token for verified adult accounts and creates a session', async t => {
+  const calls = [];
+  t.mock.method(globalThis, 'fetch', async (url, options = {}) => {
+    const target = String(url);
+    calls.push({ target, options });
+    if (target.includes('/auth/v1/user')) {
+      return json({ id: 'verified-adult', app_metadata: { adult_verified: true } });
+    }
+    if (target.includes('generativelanguage.googleapis.com/v1alpha/auth_tokens')) {
+      const payload = JSON.parse(options.body);
+      assert.equal(payload.authToken.uses, 1);
+      assert.equal(payload.authToken.bidiGenerateContentSetup.model, 'models/gemini-3.8-live');
+      assert.deepEqual(payload.authToken.bidiGenerateContentSetup.generationConfig.responseModalities, ['AUDIO']);
+      assert.ok(payload.authToken.bidiGenerateContentSetup.inputAudioTranscription);
+      assert.ok(payload.authToken.bidiGenerateContentSetup.outputAudioTranscription);
+      assert.equal(options.headers['x-goog-api-key'], 'gemini-test-placeholder');
+      return json({ name: 'ephemeral-test-token', expireTime: '2026-11-17T16:00:00Z' });
+    }
+    if (target.includes('/rpc/start_speakwise_voice_session')) {
+      return json('11111111-1111-4111-8111-111111111111');
+    }
+    throw new Error('Unexpected network request: ' + target);
+  });
+  const env = { ...baseEnv, GEMINI_API_KEY: 'gemini-test-placeholder' };
+  const response = await worker.fetch(request('/voice/gemini-token'), env);
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.provider, 'gemini');
+  assert.equal(body.ephemeralToken, 'ephemeral-test-token');
+  assert.equal(body.sessionId, '11111111-1111-4111-8111-111111111111');
+  assert.equal(body.model, 'gemini-3.8-live');
+  assert.ok(calls.some(x => x.target.includes('/rpc/start_speakwise_voice_session')));
+});
