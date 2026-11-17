@@ -58,7 +58,7 @@ const verifySupabaseUser=async(req,env)=>{
  });
  if(!response.ok)return null;
  const user=await response.json().catch(()=>null);
- return user&&user.id?{id:user.id}:null;
+ return user&&user.id?{id:user.id,adultVerified:user.app_metadata?.adult_verified===true}:null;
 };
 const sha256Hex=async(value)=>{
  const bytes=new TextEncoder().encode(String(value));
@@ -120,13 +120,14 @@ export default {
      if(!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return reply({error:'Voice Mode chưa được cấu hình xác thực Supabase.'},503,allowed);
      const user=await verifySupabaseUser(req,env);
      if(!user)return reply({error:'Bạn cần đăng nhập SpeakWise trước khi bắt đầu Voice Mode.'},401,allowed);
+     if(!user.adultVerified)return reply({error:'Voice Mode hiện chỉ dành cho tài khoản đã được xác minh đủ 18 tuổi.'},403,allowed);
      const dayStart=new Date();dayStart.setUTCHours(0,0,0,0);
      const usageResponse=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/speakwise_voice_sessions?owner_id=eq.'+encodeURIComponent(user.id)+'&started_at=gte.'+encodeURIComponent(dayStart.toISOString())+'&select=id',{
        headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+String(req.headers.get('authorization')||'')}
      });
      const usageRows=await usageResponse.json().catch(()=>[]);
      if(!usageResponse.ok||!Array.isArray(usageRows))return reply({error:'Không thể kiểm tra hạn mức Voice Mode.'},503,allowed);
-     if(usageRows.length>=5)return reply({error:'Bạn đã đạt giới hạn 5 phiên Voice Mode trong ngày. Hãy quay lại vào ngày mai.'},429,allowed);
+     if(usageRows.length>5)return reply({error:'Bạn đã đạt giới hạn 5 phiên Voice Mode trong ngày. Hãy quay lại vào ngày mai.'},429,allowed);
      const topic=limit(b.topic,120).trim()||'Daily conversation';
      const level=['A2','B1','B2','C1'].includes(String(b.level||'').toUpperCase())?String(b.level).toUpperCase():'B1';
      const goals=(Array.isArray(b.learningGoals)?b.learningGoals:[]).slice(0,5).map(x=>limit(x,120).trim()).filter(Boolean);
@@ -167,6 +168,7 @@ export default {
      if(!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return reply({error:'Thiếu cấu hình Supabase.'},503,allowed);
      const user=await verifySupabaseUser(req,env);
      if(!user)return reply({error:'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.'},401,allowed);
+     if(!user.adultVerified)return reply({error:'Tính năng phân tích Voice Mode chỉ dành cho tài khoản đã được xác minh đủ 18 tuổi.'},403,allowed);
      const sessionId=String(b.sessionId||'');
      if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return reply({error:'Session ID không hợp lệ.'},400,allowed);
      const sessionResponse=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/speakwise_voice_sessions?id=eq.'+encodeURIComponent(sessionId)+'&select=id,owner_id,topic,cefr_level',{
