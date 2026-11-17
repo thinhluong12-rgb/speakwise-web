@@ -1068,7 +1068,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       if(!response.ok){
         const diagnostics=[
           data.detail?'Chi tiết AI: '+data.detail:'',
-          Array.isArray(data.attempts)&&data.attempts.length?'Model thử: '+data.attempts.map(a=>a.model+' ('+a.status+')').join(', '):''
+          Array.isArray(data.attempts)&&data.attempts.length?'Model thử: '+data.attempts.map(a=>(a.provider?a.provider+' / ':'')+(a.model||'')+' ('+a.status+')').join(', '):''
         ].filter(Boolean).join(' · ');
         throw new Error([data.error||'AI chưa thể tạo gợi ý. Hãy thử lại.',diagnostics].filter(Boolean).join(' — '));
       }
