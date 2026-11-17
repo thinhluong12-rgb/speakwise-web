@@ -580,6 +580,59 @@ input,textarea,select{font-size:16px}
 @media(max-width:1000px){.sw-sl-shell{grid-template-columns:1fr}.sw-sl-side{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.sw-sl-chat-scroll{max-height:55vh}}
 @media(max-width:650px){.sw-sl-head{display:block}.sw-sl-status{display:inline-flex;margin-top:12px}.sw-sl-side{grid-template-columns:1fr}.sw-sl-chat{min-height:560px}.sw-sl-chat-scroll{padding:14px;max-height:52vh}.sw-sl-message{max-width:96%}.sw-sl-feedback{margin-left:0}.sw-sl-toolbar{padding:10px}.sw-sl-field{min-width:130px}.sw-sl-composer{padding:10px}.sw-sl-actions-right{margin-left:auto}}
 
+
+/* Speaking Lab — stronger conversation focus and readable type */
+.sw-sl-toolbar{padding:18px 20px;border:1px solid #cbded7;background:linear-gradient(110deg,#f2faf6,#f5f8ff);box-shadow:0 8px 24px rgba(29,75,66,.07);border-radius:18px}
+.sw-sl-field label{font-size:12px;color:#55766d;letter-spacing:.055em}
+.sw-sl-field select{height:46px;font-size:15px;border:1px solid #c9ddd5;background:#fff;border-radius:11px}
+.sw-sl-chat{min-height:680px;border:2px solid #b8d8cc;box-shadow:0 14px 38px rgba(29,75,66,.10);border-radius:22px}
+.sw-sl-chat-top{padding:18px 22px;background:linear-gradient(105deg,#e8f7ef,#eef4ff);border-bottom:1px solid #d3e7dc}
+.sw-sl-avatar{width:48px;height:48px;border-radius:15px;background:#d3eee2;color:#117d68}
+.sw-sl-coach strong{font-size:17px;color:#174e46}
+.sw-sl-coach small{font-size:13px;color:#63877c}
+.sw-sl-chat-scroll{padding:25px;gap:19px;min-height:390px;max-height:calc(100vh - 390px);background:linear-gradient(180deg,#f6fbf8 0%,#fff 100%)}
+.sw-sl-message{max-width:91%;gap:11px}
+.sw-sl-message-avatar{width:35px;height:35px;border-radius:12px}
+.sw-sl-message-avatar svg{width:18px;height:18px}
+.sw-sl-bubble{padding:15px 19px;font-size:16px;line-height:1.8;border:1px solid #d7e9df;background:#eaf6ef;color:#254e43;border-radius:17px 17px 17px 6px}
+.sw-sl-message.user .sw-sl-bubble{background:#eaf0ff;color:#2e4777;border-color:#d5def8;border-radius:17px 17px 6px 17px}
+.sw-sl-feedback{margin:12px 0 0 46px;padding:17px 18px;font-size:14px;line-height:1.8;border:1px solid #cfe5d8;background:#f5fbf7;border-radius:15px}
+.sw-sl-feedback h4{font-size:13px;margin-bottom:9px}
+.sw-sl-feedback .sw-sl-chip{font-size:12px;padding:5px 10px}
+.sw-sl-correction,.sw-sl-revision{font-size:14px;line-height:1.75}
+.sw-sl-opportunity{font-size:14px;line-height:1.7;padding:10px 0}
+.sw-sl-composer{padding:17px 19px;background:#f8fcfa;border-top:2px solid #d8e9df}
+.sw-sl-composer textarea{min-height:88px;padding:15px 17px;font-size:16px;line-height:1.7;border:1.5px solid #c8ded3;border-radius:14px;background:#fff}
+.sw-sl-mic{font-size:14px;padding:11px 14px}
+.sw-sl-composer .btn{font-size:14px;padding:12px 17px}
+.sw-sl-note{font-size:12px;line-height:1.6}
+.sw-sl-empty.sw-sl-welcome{max-width:650px;margin:auto;padding:36px 25px;border:1px solid #d5e8dc;border-radius:22px;background:linear-gradient(145deg,#fff 0%,#f0faf4 58%,#f0f4ff 100%);box-shadow:0 12px 32px rgba(36,91,75,.08)}
+.sw-sl-welcome-avatar{width:66px;height:66px;margin:0 auto 15px;border-radius:21px;display:grid;place-items:center;background:#d9f1e4;color:#147c68}
+.sw-sl-welcome-avatar svg{width:32px;height:32px}
+.sw-sl-welcome-kicker{display:block;font-size:11px;font-weight:850;letter-spacing:1.5px;color:#268c73;margin-bottom:9px}
+.sw-sl-empty.sw-sl-welcome h3{font-size:24px;color:#174b43;margin-bottom:10px}
+.sw-sl-empty.sw-sl-welcome p{font-size:15px;line-height:1.8;color:#5d7b71;max-width:530px}
+.sw-sl-start-button{display:inline-flex;align-items:center;justify-content:center;gap:10px;margin:22px auto 12px;padding:15px 24px;border:0;border-radius:13px;background:linear-gradient(105deg,#147e6d,#2368a5);color:#fff;font-size:16px;font-weight:800;box-shadow:0 8px 18px rgba(24,112,98,.22)}
+.sw-sl-start-button:hover:not(:disabled){filter:brightness(1.05);transform:translateY(-1px)}
+.sw-sl-start-button svg{width:19px;height:19px}
+.sw-sl-start-button:disabled{opacity:.55;cursor:wait}
+.sw-sl-empty.sw-sl-welcome small{display:block;font-size:12px;color:#8aa096;line-height:1.6}
+.sw-sl-typing{font-size:14px;padding:10px 0;color:#557b70}
+.sw-sl-error{font-size:14px;padding:12px 14px}
+.sw-sl-side-card{padding:19px;border-color:#d7e7df;box-shadow:0 5px 18px rgba(30,54,73,.035)}
+.sw-sl-side-card h3{font-size:15px}
+.sw-sl-side-card p{font-size:13.5px;line-height:1.8}
+.sw-sl-starter button{font-size:12.5px;padding:8px 11px}
+@media(max-width:650px){
+ .sw-sl-chat{min-height:620px;border-width:1.5px}
+ .sw-sl-chat-scroll{padding:16px;max-height:54vh}
+ .sw-sl-bubble{font-size:15px;padding:13px 15px}
+ .sw-sl-feedback{font-size:13px;padding:13px;margin-left:0}
+ .sw-sl-composer textarea{font-size:16px}
+ .sw-sl-empty.sw-sl-welcome{padding:27px 17px}
+ .sw-sl-empty.sw-sl-welcome h3{font-size:21px}
+ .sw-sl-start-button{width:100%;font-size:15px;padding:14px 12px}
+}
 </style>
 </head>
 <body>
@@ -683,7 +736,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   const saved=readSaved();
   const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[],mistakes:Array.isArray(saved.mistakes)?saved.mistakes:[],deletedMistakeIds:Array.isArray(saved.deletedMistakeIds)?saved.deletedMistakeIds:[],settings:{dailyGoal:8,...(saved.settings||{})},lastPractice:saved.lastPractice||null,learningJourney:saved.learningJourney||null};
   store.entries=store.entries.filter(e=>!store.deletedIds.includes(e.id));
-  const ui={view:'home',speakingTopic:'Daily Life',speakingLevel:'B1',speakingMessages:[],speakingInput:'',speakingBusy:false,speakingError:null,speakingLastReply:'',homeTab:'overview',labStep:'learn',labIds:[],labAt:0,reviewIds:[],reviewAt:0,reviewRevealed:false,hintBusy:false,hintResult:null,hintError:null,section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false,focusMode:false,journey:null,journeyReturn:'home'};
+  const ui={view:'home',speakingTopic:'Daily Life',speakingLevel:'B1',speakingStarted:false,speakingMessages:[],speakingInput:'',speakingBusy:false,speakingError:null,speakingLastReply:'',homeTab:'overview',labStep:'learn',labIds:[],labAt:0,reviewIds:[],reviewAt:0,reviewRevealed:false,hintBusy:false,hintResult:null,hintError:null,section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false,focusMode:false,journey:null,journeyReturn:'home'};
   const GROUPS_KEY='speakwise-collapsed-groups-v3';
   let collapsedGroups={life:false,ielts:false};
   try { const remembered=JSON.parse(localStorage.getItem(GROUPS_KEY)||'{}'); collapsedGroups={life:!!remembered.life,ielts:!!remembered.ielts}; } catch (_) {}
@@ -1092,6 +1145,24 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
         '<button class="rating-btn easy" data-action="reviewRate" data-rating="easy">Dễ</button></div></div>')+
       '</section></div>';
   }
+  async function startSpeakingConversation(){
+    if(ui.speakingBusy||ui.speakingStarted)return;
+    if(!aiEndpoint){ui.speakingError='Chưa có kết nối AI. Hãy kiểm tra cấu hình Cloudflare Worker.';render();return}
+    cleanupAudio();ui.speakingBusy=true;ui.speakingError=null;render();
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),35000);
+    try{
+      const endpoint=new URL('/conversation',new URL(aiEndpoint).origin).href;
+      const response=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify({topic:ui.speakingTopic,level:ui.speakingLevel,mode:'start',history:[]}),signal:controller.signal});
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error([data.error||'Coach AI chưa thể bắt đầu cuộc trò chuyện.',data.detail?'Gemini: '+data.detail:'',data.workersAIDetail?'Workers AI: '+data.workersAIDetail:''].filter(Boolean).join(' · '));
+      const opening=String(data.assistantMessage||'').trim();
+      if(!opening)throw new Error('Coach AI chưa tạo được câu hỏi mở đầu. Vui lòng thử lại.');
+      ui.speakingMessages=[{role:'assistant',content:opening}];
+      ui.speakingLastReply=opening;ui.speakingStarted=true;ui.speakingError=null;
+    }catch(err){ui.speakingError=err.name==='AbortError'?'Coach AI phản hồi quá lâu. Vui lòng thử lại.':String(err.message||'Không thể bắt đầu trò chuyện.')}
+    finally{clearTimeout(timer);ui.speakingBusy=false;render();const chat=document.getElementById('slChatScroll');if(chat)chat.scrollTop=chat.scrollHeight;}
+  }
   async function sendSpeakingTurn(mode='text'){
     if(ui.speakingBusy)return;
     const message=String(ui.speakingInput||'').trim();
@@ -1395,7 +1466,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       );
       return '<div class="sw-sl-message '+(user?'user':'assistant')+'"><div class="sw-sl-message-avatar">'+icon(user?'user':'bot')+'</div><div><div class="sw-sl-bubble">'+esc(m.content)+'</div>'+feedbackHtml+'</div></div>';
     }).join('');
-    const empty=!messages.length?'<div class="sw-sl-empty"><div class="sw-sl-avatar">'+icon('users')+'</div><h3>Let’s start a conversation!</h3><p>Choose a topic and tell me about your experience. I’ll keep the conversation going and help you use collocations naturally — without forcing difficult expressions into every sentence.</p></div>':'';
+    const empty=!ui.speakingStarted?'<div class="sw-sl-empty sw-sl-welcome"><div class="sw-sl-welcome-avatar">'+icon('brain')+'</div><span class="sw-sl-welcome-kicker">YOUR AI SPEAKING PARTNER</span><h3>Ready to speak with Coach AI?</h3><p>Choose a topic and your level, then start the conversation. Coach AI will open with a topic-specific question and guide the discussion based on your answers.</p><button type="button" class="sw-sl-start-button" data-action="startSpeakingChat" '+(ui.speakingBusy?'disabled':'')+'>'+icon('messageCircle')+' Start conversation with Coach AI</button><small>One question at a time · Natural conversation · Personalised collocation feedback</small></div>':'';
     const busy=ui.speakingBusy?'<div class="sw-sl-typing">SpeakWise is thinking…</div>':'';
     const error=ui.speakingError?'<div class="sw-sl-error">'+esc(ui.speakingError)+'</div>':'';
     const audioReady=!!ui.audioBlob&&!ui.recording;
@@ -1405,12 +1476,12 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       '<div style="display:flex;align-items:end"><button class="btn btn-muted" type="button" data-action="newSpeakingChat">'+icon('refresh')+' New conversation</button></div></div>'+
       '<div class="sw-sl-shell"><section class="sw-sl-chat"><div class="sw-sl-chat-top"><div class="sw-sl-coach"><div class="sw-sl-avatar">'+icon('brain')+'</div><div><strong>SpeakWise AI Coach</strong><small>Conversation partner · Collocation coach</small></div></div><button class="icon-button" type="button" title="Đọc câu trả lời mới nhất" aria-label="Đọc câu trả lời mới nhất" data-action="speakReply">'+icon('volume')+'</button></div>'+
       '<div class="sw-sl-chat-scroll" id="slChatScroll" aria-live="polite">'+empty+messageHtml+busy+'</div>'+
-      '<div class="sw-sl-composer">'+error+'<form id="speakingForm"><textarea id="speakingInput" maxlength="1400" placeholder="Type your answer in English, or record your voice…">'+esc(ui.speakingInput)+'</textarea>'+
+      (ui.speakingStarted?'<div class="sw-sl-composer">'+error+'<form id="speakingForm"><textarea id="speakingInput" maxlength="1400" placeholder="Type your answer in English, or record your voice…">'+esc(ui.speakingInput)+'</textarea>'+
       '<div class="sw-sl-composer-actions"><div class="sw-sl-actions-left"><button class="sw-sl-mic '+(ui.recording?'recording':'')+'" type="button" data-action="'+(ui.recording?'stopRecord':'startRecord')+'">'+icon(ui.recording?'square':'mic')+(ui.recording?'Stop recording':'Record answer')+'</button>'+
       (audioReady?'<span class="sw-sl-note">Recording ready · '+Math.max(1,Math.round(ui.audioBlob.size/1024))+' KB</span>':'')+
       '</div><div class="sw-sl-actions-right">'+(audioReady?'<button class="btn btn-muted" type="button" data-action="discardSpeakingAudio">Discard audio</button><button class="btn btn-primary" type="button" data-action="sendSpeakingAudio">'+icon('arrowRight')+' Send recording</button>':'')+
       '<button class="btn btn-primary" type="submit" '+(ui.speakingBusy||ui.recording?'disabled':'')+'>'+icon('arrowRight')+' Send</button></div></div></form>'+
-      '<div class="sw-sl-note">Microphone input is transcribed with Whisper. AI feedback focuses on language use; it is not an official IELTS score.</div></div></section>'+
+      '<div class="sw-sl-note">Microphone input is transcribed with Whisper. AI feedback focuses on language use; it is not an official IELTS score.</div></div></form></div>':'')+'</section>'+
       '<aside class="sw-sl-side"><article class="sw-sl-side-card"><h3>'+icon('lightbulb')+' How your coach helps</h3><p>Get feedback on natural collocations, awkward word combinations and more precise ways to express your ideas. Then continue the conversation.</p></article>'+
       '<article class="sw-sl-side-card"><h3>'+icon('users')+' Try a conversation starter</h3><p>Choose a prompt to get started. You can answer in your own words.</p><div class="sw-sl-starter">'+
       ['What do you usually do to unwind after a busy day?','Tell me about a meal you really enjoyed.','What makes a workplace enjoyable?'].map((x,i)=>'<button type="button" data-action="speakingStarter" data-prompt="'+esc(x)+'">'+['Daily routine','Food & dining','Work & study'][i]+'</button>').join('')+
@@ -1749,7 +1820,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'startRecord':startRecord();break;
       case 'sendSpeakingAudio':sendSpeakingTurn('speak');break;
       case 'discardSpeakingAudio':cleanupAudio();render();break;
-      case 'newSpeakingChat':cleanupAudio();ui.speakingMessages=[];ui.speakingInput='';ui.speakingError=null;ui.speakingLastReply='';render();break;
+      case 'newSpeakingChat':cleanupAudio();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingInput='';ui.speakingError=null;ui.speakingLastReply='';render();break;
+      case 'startSpeakingChat':startSpeakingConversation();break;
       case 'speakingStarter':ui.speakingInput=el.dataset.prompt||'';render();document.getElementById('speakingInput')?.focus();break;
       case 'speakReply':speakSpeakingReply();break;
       case 'stopRecord':stopRecord();break;
@@ -1771,7 +1843,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     }
   });
   document.addEventListener('input',e=>{if(e.target.id==='searchInput'){ui.query=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='recallInput')ui.recallText=e.target.value;if(e.target.id==='sentenceInput')ui.sentenceText=e.target.value;if(e.target.id==='speakingInput')ui.speakingInput=e.target.value});
-  document.addEventListener('change',e=>{if(e.target.id==='statusFilter'){ui.filter=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='practiceTopic'||e.target.id==='practiceScope'){ui.quizTopic=document.getElementById('practiceTopic').value;ui.quizScope=document.getElementById('practiceScope').value;resetLabSession();render()}if(e.target.id==='dailyGoalSelect'){store.settings.dailyGoal=Number(e.target.value)||8;save();render()}if(e.target.id==='slTopic')ui.speakingTopic=e.target.value;if(e.target.id==='slLevel')ui.speakingLevel=e.target.value;if(e.target.id==='entryTopic')updateFormTopics();if(e.target.id==='aiTopicSelect'){const box=document.getElementById('aiNewTopicField');if(box)box.hidden=e.target.value!=='__new__'}});
+  document.addEventListener('change',e=>{if(e.target.id==='statusFilter'){ui.filter=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='practiceTopic'||e.target.id==='practiceScope'){ui.quizTopic=document.getElementById('practiceTopic').value;ui.quizScope=document.getElementById('practiceScope').value;resetLabSession();render()}if(e.target.id==='dailyGoalSelect'){store.settings.dailyGoal=Number(e.target.value)||8;save();render()}if(e.target.id==='slTopic'&&ui.speakingTopic!==e.target.value){ui.speakingTopic=e.target.value;cleanupAudio();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingLastReply='';ui.speakingError=null;render()}if(e.target.id==='slLevel'&&ui.speakingLevel!==e.target.value){ui.speakingLevel=e.target.value;cleanupAudio();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingLastReply='';ui.speakingError=null;render()}if(e.target.id==='entryTopic')updateFormTopics();if(e.target.id==='aiTopicSelect'){const box=document.getElementById('aiNewTopicField');if(box)box.hidden=e.target.value!=='__new__'}});
   document.addEventListener('submit',e=>{if(e.target.id==='entryForm'){e.preventDefault();saveEntry(e.target)}if(e.target.id==='recallForm'){e.preventDefault();checkRecall(ui.recallText)}if(e.target.id==='aiCreateForm'){e.preventDefault();generateCollocations()}if(e.target.id==='journeyRecallForm'){e.preventDefault();journeyCheckRecall(document.getElementById('journeyRecallInput')?.value||'')}if(e.target.id==='speakingForm'){e.preventDefault();sendSpeakingTurn('text')}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeModal();document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')}if(e.key===' '&&!['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName)&&!ui.modal&&!ui.drawer&&ui.view==='flashcards'){e.preventDefault();if(ui.deck[ui.deckAt]){ui.flipped=!ui.flipped;render()}}if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-action="detail"]')){e.preventDefault();openDrawer(e.target.dataset.id)}if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('flashcard')&&ui.view==='flashcards'){e.preventDefault();ui.flipped=!ui.flipped;render()}});
   document.getElementById('addBtn').addEventListener('click',()=>entryModal());
