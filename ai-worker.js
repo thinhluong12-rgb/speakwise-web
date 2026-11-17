@@ -106,7 +106,7 @@ export default {
   if(incoming&&incoming!==allowed)return new Response('Origin not allowed',{status:403});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:headers(allowed)});
   if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY||!!env.AI?.run,voiceReady:!!env.OPENAI_API_KEY&&!!env.SUPABASE_URL&&!!env.SUPABASE_PUBLISHABLE_KEY,geminiLiveReady:!!env.GEMINI_API_KEY&&!!env.SUPABASE_URL&&!!env.SUPABASE_PUBLISHABLE_KEY,providers:{openai:!!env.OPENAI_API_KEY,gemini:!!env.GEMINI_API_KEY,workersAI:!!env.AI?.run},model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash',workersAIModel:WORKERS_AI_TEXT_MODEL},200,allowed);
-  if(!['/evaluate','/generate','/hint','/conversation','/voice/session','/voice/analyze'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
+  if(!['/evaluate','/generate','/hint','/conversation','/voice/session','/voice/gemini-token','/voice/analyze'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
   if(path!=='/voice/session'&&!env.GEMINI_API_KEY&&!env.AI?.run)return reply({error:'AI chưa được cấu hình: cần GEMINI_API_KEY hoặc Workers AI binding.'},503,allowed);
   try{
    if(Number(req.headers.get('content-length')||0)>9e6)return reply({error:'Ghi âm quá lớn.'},413,allowed);
