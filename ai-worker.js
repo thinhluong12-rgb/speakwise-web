@@ -119,6 +119,13 @@ const runVoiceAnalysis=async(env,prompt)=>{
      if(!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return reply({error:'Voice Mode chưa được cấu hình xác thực Supabase.'},503,allowed);
      const user=await verifySupabaseUser(req,env);
      if(!user)return reply({error:'Bạn cần đăng nhập SpeakWise trước khi bắt đầu Voice Mode.'},401,allowed);
+     const dayStart=new Date();dayStart.setUTCHours(0,0,0,0);
+     const usageResponse=await fetch(env.SUPABASE_URL.replace(/\\/$/,'')+'/rest/v1/speakwise_voice_sessions?owner_id=eq.'+encodeURIComponent(user.id)+'&started_at=gte.'+encodeURIComponent(dayStart.toISOString())+'&select=id',{
+       headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+String(req.headers.get('authorization')||'')}
+     });
+     const usageRows=await usageResponse.json().catch(()=>[]);
+     if(!usageResponse.ok||!Array.isArray(usageRows))return reply({error:'Không thể kiểm tra hạn mức Voice Mode.'},503,allowed);
+     if(usageRows.length>=5)return reply({error:'Bạn đã đạt giới hạn 5 phiên Voice Mode trong ngày. Hãy quay lại vào ngày mai.'},429,allowed);
      const topic=limit(b.topic,120).trim()||'Daily conversation';
      const level=['A2','B1','B2','C1'].includes(String(b.level||'').toUpperCase())?String(b.level).toUpperCase():'B1';
      const goals=(Array.isArray(b.learningGoals)?b.learningGoals:[]).slice(0,5).map(x=>limit(x,120).trim()).filter(Boolean);
@@ -166,22 +173,27 @@ const runVoiceAnalysis=async(env,prompt)=>{
      });
      const sessions=await sessionResponse.json().catch(()=>[]);
      if(!sessionResponse.ok||!Array.isArray(sessions)||!sessions.length||sessions[0].owner_id!==user.id)return reply({error:'Không tìm thấy buổi học hoặc bạn không có quyền truy cập.'},404,allowed);
-     const turns=Array.isArray(b.turns)?b.turns.slice(0,100).map((t,i)=>({
+     const turnsResponse=await fetch(env.SUPABASE_URL.replace(/\\/$/,'')+'/rest/v1/speakwise_voice_turns?session_id=eq.'+encodeURIComponent(sessionId)+'&select=turn_id,speaker,text,status,occurred_at&order=turn_index.asc&limit=100',{
+       headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+String(req.headers.get('authorization')||'')}
+     });
+     const storedTurns=await turnsResponse.json().catch(()=>[]);
+     if(!turnsResponse.ok||!Array.isArray(storedTurns))return reply({error:'Không thể tải transcript đã lưu để phân tích.'},503,allowed);
+     const turns=storedTurns.map(t=>({
        speaker:t?.speaker==='assistant'?'assistant':'user',
        text:limit(t?.text,12000),
        status:['partial','final','interrupted'].includes(t?.status)?t.status:'final',
        occurred_at:limit(t?.occurred_at,50)||new Date().toISOString(),
-       turn_id:limit(t?.turn_id,120)||('turn-'+i)
-     })).filter(t=>t.text.trim()):[];
+       turn_id:limit(t?.turn_id,120)
+     })).filter(t=>t.text.trim());
      if(!turns.some(t=>t.speaker==='user'&&t.status!=='partial'))return reply({error:'Chưa có câu trả lời đủ nội dung để phân tích.'},400,allowed);
      const prompt=voiceAnalysisPrompt(sessions[0].topic,sessions[0].cefr_level,turns);
      try{
        const report=await runVoiceAnalysis(env,prompt);
        const criteria=report.criteria&&typeof report.criteria==='object'?report.criteria:{};
        report.criteria={
-         fluency_coherence:criteria.fluency_coherence||{status:'insufficient_evidence',summary:'Chưa đủ dữ liệu để đánh giá.',evidence:[],confidence:'low',next_action:'Thực hiện một phiên nói dài hơn.'},
-         lexical_resource:criteria.lexical_resource||{status:'insufficient_evidence',summary:'Chưa đủ dữ liệu để đánh giá.',evidence:[],confidence:'low',next_action:'Thực hiện một phiên nói dài hơn.'},
-         grammatical_range_accuracy:criteria.grammatical_range_accuracy||{status:'insufficient_evidence',summary:'Chưa đủ dữ liệu để đánh giá.',evidence:[],confidence:'low',next_action:'Thực hiện một phiên nói dài hơn.'},
+         fluency_coherence:cleanCriterion(criteria.fluency_coherence),
+         lexical_resource:cleanCriterion(criteria.lexical_resource),
+         grammatical_range_accuracy:cleanCriterion(criteria.grammatical_range_accuracy),
          pronunciation:{status:'not_assessed',summary:'Chưa đánh giá phát âm vì quy trình này chỉ nhận transcript, không phân tích tín hiệu âm thanh.',evidence:[],confidence:'none',next_action:'Cần một quy trình phân tích audio chuyên biệt trước khi đưa ra nhận xét phát âm.'}
        };
        report.overall_summary=limit(report.overall_summary,1200);
