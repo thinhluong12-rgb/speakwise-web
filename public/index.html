@@ -493,6 +493,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   const STORAGE_KEY = 'speakwise-collocation-studio-v1';
   const seed = window.SPEAKING_SEED || {topics:[],entries:[],sessions:[]};
   const iconPaths = {
+    chart:'<path d="M4 20V12M10 20V5M16 20v-9M22 20V8"/><path d="M2 21h20"/>',
     target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
     notebook:'<rect x="5" y="3" width="15" height="18" rx="2"/><path d="M9 3v18M12 8h5M12 12h5M12 16h4"/>',
     flame:'<path d="M12 22c4.3 0 7-3.3 7-7.2 0-2.2-1.3-4.2-2.7-5.5-.2 2.2-1.1 3.5-2.3 4-1.7-3-1.7-6-1-10.3C9.2 5.4 6 8.7 6 13.5c0 1.7.5 3.1 1.6 4.3A5.6 5.6 0 0 0 12 22Z"/><path d="M12 22c-2 0-3.2-1.4-3.2-3.3 0-1.5.8-3.2 2.3-4.3.1 1.4.7 2 1.1 2.5.6-.5 1-1.4 1.1-2.1 1.4 1.6 1.8 2.7 1.8 4A3.1 3.1 0 0 1 12 22Z"/>',
@@ -593,7 +594,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function renderIcons(){document.querySelectorAll('[data-icon]').forEach(el=>{el.innerHTML=icon(el.dataset.icon)})}
   function sidebar(){document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===(ui.view==='journey'?'home':ui.view==='mistakes'?'home':ui.view==='memory'?'flashcards':ui.view)))}
   const navNames={home:'Trang chủ',flashcards:'Flashcards · Ghi nhớ',memory:'Flashcards · Ghi nhớ',apply:'Ứng dụng',topics:'Topic Collocations',journey:'Learning Journey',mistakes:'Trang chủ'};
-  function header(){document.getElementById('breadcrumb').innerHTML='<strong>'+navNames[ui.view]+'</strong>'}
+  function header(){const suffix=ui.view==='home'&&ui.homeTab!=='overview'?' / '+(ui.homeTab==='mistakes'?'My Mistakes':'Mastery'):'';document.getElementById('breadcrumb').innerHTML='<strong>'+(navNames[ui.view]||'Trang chủ')+suffix+'</strong>'}
   // Navigation and in-panel headings provide the section context; do not repeat it above every card.
   function intro(){return ''}
   function hero(){return `<div class="hero"><div class="hero-content"><div class="hero-tag">${icon('sparkles')} YOUR SPEAKING LIBRARY</div><h2>Học theo ngữ cảnh.<br/>Diễn đạt tự nhiên hơn mỗi ngày.</h2><p>Lưu lại những collocations đã luyện, xem ví dụ thực tế và ôn lại đúng lúc — không cần học thuộc cả bài mẫu.</p></div><div class="hero-art" aria-hidden="true"><div class="hero-circle-one"></div><div class="hero-circle-two"></div><div class="hero-card-float"><strong>learn in context ✦</strong><p>Speak clearly & confidently</p></div><div class="hero-chip">make it stick ↗</div></div></div>`}
@@ -919,9 +920,9 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceText='';
     ui.quiz={answerId:valid[0],options:[],selected:null,isCorrect:null};
     store.learningJourney={ids:valid,at:0,step:'learn',createdAt:new Date().toISOString()};
-    save();render();window.scrollTo({top:0,behavior:'smooth'});
+    save();render();writeRoute();window.scrollTo({top:0,behavior:'smooth'});
   }
-  function resumeJourney(){
+  function resumeJourney({fromRoute=false}={}){
     const saved=store.learningJourney;
     if(!saved?.ids?.length){toast('Chưa có phiên học để tiếp tục.');return}
     const ids=saved.ids.filter(id=>store.entries.some(e=>e.id===id));
@@ -931,7 +932,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     ui.journey={ids,at,step,recall:saved.recall||null,startedAt:Date.now()};
     ui.view='journey';ui.focusMode=true;ui.sentenceMode='write';ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceText='';
     ui.quiz={answerId:ids[at],options:[],selected:null,isCorrect:null};
-    render();window.scrollTo({top:0,behavior:'smooth'});
+    render();if(!fromRoute)writeRoute();window.scrollTo({top:0,behavior:'smooth'});
   }
   function syncJourneyProgress(){
     if(!ui.journey)return;
@@ -1068,7 +1069,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function retryMistake(id){
     const m=store.mistakes.find(x=>x.id===id),entry=store.entries.find(x=>x.id===m?.entryId);
     if(!entry){toast('Không tìm thấy collocation.');return}
-    ui.quizTopic=entry.topicId;ui.quizScope='all';goView('apply');ui.sentenceMode=m.mode==='speak'?'speak':'write';
+    ui.quizTopic=entry.topicId;ui.quizScope='all';ui.sentenceMode=m.mode==='speak'?'speak':'write';goView('apply');
     ui.quiz={answerId:entry.id,options:[],selected:null,isCorrect:null};ui.sentenceText='';render();
     toast('Hãy tạo một câu mới để kiểm chứng khả năng vận dụng.');
   }
@@ -1250,15 +1251,70 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   }
   function saveJSON(){const exportData={version:1,app:'Speaking Collocations Studio',exportedAt:new Date().toISOString(),topics:store.topics,entries:store.entries,progress:store.progress,deletedIds:store.deletedIds,sessions:store.sessions};const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`speakwise-backup-${localDay()}.json`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3000);toast('Đã xuất bản sao JSON.')}
   async function importJSON(file){if(!file)return;try{const raw=JSON.parse(await file.text());const payload=Array.isArray(raw)?{entries:raw}:raw;if(!payload||typeof payload!=='object'||!Array.isArray(payload.entries))throw new Error('Thiếu danh sách entries.');const incomingTopics=Array.isArray(payload.topics)?payload.topics.filter(t=>t.id&&t.name&&['life','ielts'].includes(t.section)):[];const allTopics=combine(store.topics,incomingTopics,'id');const ids=new Set(allTopics.map(t=>t.id));let count=0,updated=0;for(const x of payload.entries){if(!x||typeof x.phrase!=='string'||!x.phrase.trim()||typeof x.meaning!=='string'||typeof x.example!=='string'||!ids.has(x.topicId))continue;const id=typeof x.id==='string'&&x.id?x.id:'import-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);const item={id,topicId:x.topicId,phrase:x.phrase.trim(),ipa:String(x.ipa||''),meaning:x.meaning.trim(),example:x.example.trim(),note:String(x.note||''),source:String(x.source||'Cập nhật từ buổi luyện'),addedAt:String(x.addedAt||localDay())};const idx=store.entries.findIndex(e=>e.id===id);if(idx>=0){store.entries[idx]={...store.entries[idx],...item};updated++}else{store.entries.push(item);count++}store.deletedIds=store.deletedIds.filter(d=>d!==id)}store.topics=allTopics;if(Array.isArray(payload.deletedIds)){store.deletedIds=[...new Set([...store.deletedIds,...payload.deletedIds])];store.entries=store.entries.filter(x=>!store.deletedIds.includes(x.id));}if(payload.progress&&typeof payload.progress==='object'&&!Array.isArray(payload.progress))store.progress={...store.progress,...payload.progress};if(Array.isArray(payload.sessions))store.sessions=combine(store.sessions,payload.sessions,'id');save();ui.page=1;ui.deck=[];ui.quiz=null;render();toast(`Đã nhập ${count} cụm mới và cập nhật ${updated} cụm.`)}catch(error){toast('File JSON chưa hợp lệ: '+error.message)}finally{document.getElementById('importFile').value=''}}
-  function goView(v){if(['apply','journey'].includes(ui.view)&&v!==ui.view)cleanupAudio();ui.focusMode=false;ui.view=v;
+  // Hash-based routes retain the current screen after a refresh and support Back/Forward.
+  function routePath(){
+    if(ui.view==='home'||ui.view==='mistakes')return '/home'+(ui.homeTab==='overview'?'':'/'+ui.homeTab);
+    if(ui.view==='topics')return '/topics'+(ui.topic==='all'?'':'/'+encodeURIComponent(ui.topic));
+    if(ui.view==='flashcards')return '/flashcards';
+    if(ui.view==='memory')return '/flashcards/memory/'+(ui.quizMode==='recall'?'recall':'multiple');
+    if(ui.view==='apply')return '/apply/'+(ui.sentenceMode==='speak'?'speak':'write');
+    if(ui.view==='journey')return '/journey';
+    return '/home';
+  }
+  function writeRoute(replace=false){
+    const next='#'+routePath();
+    if(window.location.hash===next)return;
+    if(window.history?.pushState){
+      if(replace)window.history.replaceState(null,'',next);
+      else window.history.pushState(null,'',next);
+    }else window.location.hash=next;
+  }
+  function openHomeTab(name){
+    ui.homeTab=['overview','mistakes','mastery'].includes(name)?name:'overview';
+    goView('home');
+  }
+  function readRoute(){
+    const hash=String(window.location.hash||'').replace(/^#/,'');
+    const raw=hash.startsWith('/')?hash:hash==='library'?'/topics':
+      (hash==='quiz'||hash==='memory')?'/flashcards/memory/multiple':
+      hash?'/'+hash:'/home';
+    const parts=raw.split('/').filter(Boolean);
+    const main=parts[0];
+    if(main==='home'){
+      ui.homeTab=['mistakes','mastery'].includes(parts[1])?parts[1]:'overview';
+      goView('home',{fromRoute:true});
+    }else if(main==='topics'){
+      let id='all';if(parts[1]){try{id=decodeURIComponent(parts[1])}catch(_){}}
+      ui.topic=store.topics.some(t=>t.id===id)?id:'all';
+      ui.section='all';ui.page=1;ui.filter='all';ui.query='';
+      goView('topics',{fromRoute:true});
+    }else if(main==='flashcards'){
+      if(parts[1]==='memory'){
+        ui.quizMode=parts[2]==='recall'?'recall':'multiple';
+        goView('memory',{fromRoute:true});
+      }else goView('flashcards',{fromRoute:true});
+    }else if(main==='apply'){
+      ui.sentenceMode=parts[1]==='speak'?'speak':'write';
+      goView('apply',{fromRoute:true});
+    }else if(main==='journey'&&store.learningJourney?.ids?.length){
+      resumeJourney({fromRoute:true});
+    }else{
+      ui.homeTab='overview';
+      goView('home',{fromRoute:true});
+    }
+    writeRoute(true);
+  }
+  function goView(v,{fromRoute=false}={}){if(['apply','journey'].includes(ui.view)&&v!==ui.view)cleanupAudio();ui.focusMode=false;ui.view=v;
     if(v==='flashcards')makeDeck();
     if(v==='memory'||v==='apply'){ui.quizMode=v==='apply'?'sentence':ui.quizMode==='sentence'?'multiple':ui.quizMode;ui.quizSeen=[];ui.quiz=null;ui.quizCorrect=0;ui.quizTotal=0}
     if(['flashcards','memory','apply'].includes(v)){store.lastPractice={view:v,date:localDay()};save()}
-    render();document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open');
+    render();if(!fromRoute)writeRoute();
+    document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open');
     window.scrollTo({top:0,behavior:'smooth'})}
   document.addEventListener('click',e=>{
     const nav=e.target.closest('[data-nav]');if(nav){
       if(nav.dataset.nav==='topics'){ui.topic='all';ui.section='all';ui.filter='all';ui.query='';ui.page=1}
+      if(nav.dataset.nav==='home')ui.homeTab='overview';
       goView(nav.dataset.nav);return
     }
     const el=e.target.closest('[data-action]');if(!el)return;
@@ -1288,14 +1344,14 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'downloadTemplate':downloadTemplate();break;
       case 'saveAIDrafts':saveAIDrafts();break;
       case 'toggleGroup':collapsedGroups[section]=!collapsedGroups[section];try{localStorage.setItem(GROUPS_KEY,JSON.stringify(collapsedGroups))}catch(_){}sidebar();break;
-      case 'section':ui.section=section;ui.topic='all';ui.page=1;ui.view='library';render();break;
+      case 'section':ui.section='all';ui.topic='all';ui.page=1;ui.view='topics';render();writeRoute();break;
       case 'topic':{
         const wasSelected=ui.topic===topicId&&ui.view==='topics';
-        ui.topic=wasSelected?'all':topicId;ui.section='all';ui.filter='all';ui.query='';ui.page=1;ui.view='topics';render();
+        ui.topic=wasSelected?'all':topicId;ui.section='all';ui.filter='all';ui.query='';ui.page=1;ui.view='topics';render();writeRoute();
         if(!wasSelected)document.getElementById('selectedTopicCollocations')?.scrollIntoView({behavior:'smooth',block:'start'});
         break;
       }
-      case 'clearFilters':ui.section='all';ui.topic='all';ui.filter='all';ui.query='';ui.page=1;render();break;
+      case 'clearFilters':ui.section='all';ui.topic='all';ui.filter='all';ui.query='';ui.page=1;render();writeRoute();break;
       case 'page':ui.page=Number(page);libraryTable();break;
       case 'detail':openDrawer(id);break;
       case 'closeDrawer':closeDrawer();break;
@@ -1307,8 +1363,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'flip':ui.flipped=!ui.flipped;render();break;
       case 'rate':review(ui.deck[ui.deckAt],rating,{action:'flashcard',correct:rating!=='hard'});ui.deckAt++;ui.flipped=false;render();break;
       case 'restart':cleanupAudio();ui.view==='flashcards'?makeDeck():(ui.quiz=null,ui.quizSeen=[],ui.quizCorrect=0,ui.quizTotal=0);render();break;
-      case 'quizMode':cleanupAudio();ui.quizMode=mode;ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;ui.sentenceResult=null;ui.sentenceError=null;render();break;
-      case 'sentenceMode':cleanupAudio();ui.sentenceMode=mode;ui.sentenceResult=null;ui.sentenceError=null;render();break;
+      case 'quizMode':cleanupAudio();ui.quizMode=mode;ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;ui.sentenceResult=null;ui.sentenceError=null;render();writeRoute();break;
+      case 'sentenceMode':cleanupAudio();ui.sentenceMode=mode;ui.sentenceResult=null;ui.sentenceError=null;render();writeRoute();break;
       case 'saveEndpoint':{
         const value=document.getElementById('aiEndpoint')?.value.trim()||'';
         if(value){
@@ -1345,7 +1401,9 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   document.getElementById('menuToggle').addEventListener('click',()=>{document.getElementById('sidebar').classList.add('open');document.getElementById('mobileShade').classList.add('open')});
   document.getElementById('mobileShade').addEventListener('click',()=>{document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')});
   document.getElementById('brandLink').addEventListener('click',e=>{e.preventDefault();goView('home');ui.section='all';ui.topic='all';render()});
-  render();
+  window.addEventListener('popstate',readRoute);
+  window.addEventListener('hashchange',readRoute);
+  readRoute();
   verifyAiService();
   window.SpeakwiseSync?.init({store,render,toast});
 })();
