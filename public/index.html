@@ -201,7 +201,7 @@ body{font-size:15px;line-height:1.62}
 .group-header:focus-visible{outline:3px solid #47a991;outline-offset:2px}
 @media(prefers-reduced-motion:reduce){.group-caret{transition:none}}
 
-.sw-sync-shade{position:fixed;inset:0;background:#152d3e80;z-index:98}
+#syncButton{position:fixed;left:18px;bottom:20px;z-index:35;min-width:218px;justify-content:center;box-shadow:0 5px 18px #173d3a18;border:1px solid #dce9e5;background:#fff;color:#176f66;padding:12px 16px;font-weight:750}\n#syncButton:hover{background:#edf8f4;border-color:#b9ded2}\n@media(max-width:950px){#syncButton{left:14px;bottom:82px;min-width:150px;padding:11px 15px;box-shadow:0 5px 20px #173d3a25}}\n.sw-sync-shade{position:fixed;inset:0;background:#152d3e80;z-index:98}
 .sw-sync-modal{position:fixed;z-index:99;top:50%;left:50%;transform:translate(-50%,-50%);width:min(470px,calc(100vw - 30px));background:#fff;box-shadow:0 24px 75px #142b3e22;border-radius:18px;padding:27px}
 #speakwiseSyncHost:not(.open){display:none}
 .sw-sync-modal h2{font-size:20px;margin:0 0 10px}
@@ -650,6 +650,7 @@ input,textarea,select{font-size:16px}
         <button class="nav-item" data-nav="flashcards"><span data-icon="layers"></span> Learning Lab</button>
         <button class="nav-item" data-nav="speakingLab"><span data-icon="users"></span> Speaking Lab</button>
       </nav>
+      <button class="btn btn-muted btn-compact" id="syncButton" type="button" aria-label="Đăng nhập hoặc mở tài khoản">Đăng nhập</button>
     </aside>
 
     <main class="main">
@@ -657,10 +658,7 @@ input,textarea,select{font-size:16px}
         <div class="mobile-logo"><button class="icon-button menu-button" id="menuToggle" aria-label="Mở menu"><span data-icon="menu"></span></button><img src="/speakwise-logo.webp" alt=""/><b>Speakwise<span class="brand-dot">.</span></b></div>
         <div class="breadcrumb" id="breadcrumb"><span>Không gian học</span><span class="crumb-chevron">/</span><strong>Trang chủ</strong></div>
         <div class="topbar-actions">
-          <button class="btn btn-muted btn-compact" id="syncButton" type="button">Đồng bộ</button>
-
-          <button class="btn btn-primary" id="addBtn"><span data-icon="plus"></span><span>Thêm cụm từ</span></button>
-          <input type="file" id="importFile" accept=".xlsx,.xls,.csv,.json,application/json,text/csv" hidden/>
+          <button class="btn btn-primary" id="addBtn"><span data-icon="plus"></span><span>Thêm cụm từ</span></button>          <input type="file" id="importFile" accept=".xlsx,.xls,.csv,.json,application/json,text/csv" hidden/>
         </div>
       </header>
       <div class="page-content" id="pageContent"></div>
