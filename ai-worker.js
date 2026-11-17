@@ -71,13 +71,36 @@ export default {
          catch(_){lastError={status:502,error:'Gemini trả về gợi ý không đúng định dạng.'};attempts.push({model,status:'invalid-json',elapsedMs:Date.now()-began})}
        }else if(response&&!response.ok){
          const status=response.status,detail=redact(data?.error?.message||'');
-         lastError={status:status===404?502:status,error:'Gemini không thể tạo gợi ý ('+status+').',detail};
-         attempts.push({model,status,elapsedMs:Date.now()-began});
-         if([401,403,429].includes(status))break;
+         const locationUnsupported=/user location is not supported|location (is )?not supported|not available in your location|unsupported location/i.test(detail);
+         const category=locationUnsupported?'GEMINI_LOCATION_UNSUPPORTED':
+           status===401?'GEMINI_AUTH':status===403?'GEMINI_PERMISSION':
+           status===429?'GEMINI_QUOTA':status===404?'GEMINI_MODEL_NOT_FOUND':
+           status>=500?'GEMINI_UPSTREAM':'GEMINI_REQUEST';
+         lastError={
+           status:locationUnsupported?503:(status===404?502:status),
+           error:locationUnsupported
+             ?'Gemini Idea Suggestions hiện không khả dụng từ môi trường máy chủ này.'
+             :'Gemini không thể tạo gợi ý ('+status+').',
+           code:category,
+           detail,
+           help:locationUnsupported
+             ?'Google từ chối request vì vị trí gửi request không được hỗ trợ. Đổi model/API key thường không khắc phục được lỗi này; cần kiểm tra đường truyền hoặc môi trường chạy Worker.'
+             :status===429?'Gemini đang giới hạn quota hoặc tốc độ yêu cầu. Hãy kiểm tra quota trước khi thử lại.'
+             :status===401||status===403?'Kiểm tra quyền và giới hạn của API key.'
+             :status===404?'Kiểm tra tên model và quyền truy cập model.'
+             :'Kiểm tra request và phản hồi Gemini.'
+         };
+         attempts.push({model,status,category,elapsedMs:Date.now()-began});
+         // A location restriction is not model-specific. Do not waste a second
+         // request against another model or disguise the upstream cause.
+         console.warn('SpeakWise /hint upstream failure',JSON.stringify({
+           category,upstreamStatus:status,model,elapsedMs:Date.now()-began
+         }));
+         if(locationUnsupported||[401,403,429].includes(status))break;
        }
        if(i<models.length-1)await new Promise(resolve=>setTimeout(resolve,350));
      }
-     if(!parsed)return reply({...lastError,attempts,elapsedMs:Date.now()-started},lastError?.status===504?504:502,allowed);
+     if(!parsed)return reply({...lastError,attempts,elapsedMs:Date.now()-started},lastError?.status===504?504:lastError?.status===503?503:502,allowed);
      const hints=(Array.isArray(parsed.hints)?parsed.hints:[]).slice(0,3).map(h=>({
        situation:limit(h?.situation,220).trim(),
        keywords:(Array.isArray(h?.keywords)?h.keywords:[]).slice(0,6).map(x=>limit(x,70).trim()).filter(Boolean),
