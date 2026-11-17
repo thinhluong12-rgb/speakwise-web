@@ -785,9 +785,11 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       '<button role="tab" type="button" data-action="studyTab" data-mode="'+mode+'" aria-selected="'+(view===target)+'" class="'+(view===target?'active':'')+'">'+icon(svg)+' '+label+'</button>').join('')+'</div>'+
       '<div class="practice-filters">'+
       '<select class="filter-select" aria-label="Chọn topic" id="practiceTopic">'+scopeOptions(ui.quizTopic)+'</select>'+
+      (view==='review'?'<select class="filter-select" aria-label="Lọc danh sách Review" id="practiceScope"><option value="all" '+(ui.quizScope==='all'?'selected':'')+'>Đến hạn ôn ('+dueCount()+')</option>'+
+      '<option value="star" '+(ui.quizScope==='star'?'selected':'')+'>Đến hạn · Đã đánh dấu</option></select>':
       '<select class="filter-select" aria-label="Chọn bộ từ" id="practiceScope"><option value="all" '+(ui.quizScope==='all'?'selected':'')+'>Tất cả cụm từ</option>'+
       '<option value="due" '+(ui.quizScope==='due'?'selected':'')+'>Đến hạn ôn ('+dueCount()+')</option>'+
-      '<option value="star" '+(ui.quizScope==='star'?'selected':'')+'>Đã đánh dấu ('+savedCount()+')</option></select>'+
+      '<option value="star" '+(ui.quizScope==='star'?'selected':'')+'>Đã đánh dấu ('+savedCount()+')</option></select>')+
       '<button class="btn btn-muted" data-action="restart">'+icon('refresh')+' Bắt đầu lại</button>'+
       '<button class="btn btn-muted sw-focus-button" data-action="toggleFocus">'+icon('layers')+' '+(ui.focusMode?'Thoát Focus':'Focus Mode')+'</button></div>';
   }
@@ -1444,7 +1446,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function goView(v,{fromRoute=false}={}){if(['apply','journey'].includes(ui.view)&&v!==ui.view)cleanupAudio();ui.focusMode=false;ui.view=v;
     if(v==='flashcards')makeDeck();
     if(v==='memory'||v==='apply'){ui.quizMode=v==='apply'?'sentence':ui.quizMode==='sentence'?'multiple':ui.quizMode;ui.quizSeen=[];ui.quiz=null;ui.quizCorrect=0;ui.quizTotal=0;ui.hintResult=null;ui.hintError=null}
-    if(v==='review')prepareReview();
+    if(v==='review'){ui.quizScope='all';prepareReview()}
     if(['flashcards','memory','apply','review'].includes(v)){store.lastPractice={view:v,date:localDay()};save()}
     render();if(!fromRoute)writeRoute();
     document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open');
