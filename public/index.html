@@ -828,7 +828,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function ensureQuizForCurrent(){
     const answer=labCurrentEntry();
     if(!answer){ui.quiz=null;return null}
-    if(ui.quiz?.answerId===answer.id)return ui.quiz;
+    if(ui.quiz?.answerId===answer.id&&Array.isArray(ui.quiz.options)&&ui.quiz.options.length)return ui.quiz;
     const pool=studyPool();
     let distractors=shuffle(pool.filter(e=>e.id!==answer.id));
     if(distractors.length<3)distractors=shuffle([...distractors,...store.entries.filter(e=>e.id!==answer.id&&!distractors.includes(e))]);
