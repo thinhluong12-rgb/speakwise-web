@@ -8,7 +8,7 @@ This feature adds a separate Voice Mode to the existing Speaking Lab. The curren
 
 - Browser: WebRTC peer connection, microphone capture, remote audio playback, Realtime data channel events.
 - Cloudflare Worker:
-  - POST /voice/session authenticates the Supabase user, requires server-controlled adult verification, applies a daily session cap, and creates a short-lived Realtime client secret.
+  - POST /voice/session authenticates the Supabase user, requires server-controlled adult verification, calls a database RPC to create the session and enforce a serialized daily quota, and creates a short-lived Realtime client secret.
   - POST /voice/analyze verifies session ownership, reads saved turns from Supabase, and generates an evidence-based learning report.
 - Supabase:
   - speakwise_voice_sessions: one row per Voice session.
@@ -23,6 +23,7 @@ This feature adds a separate Voice Mode to the existing Speaking Lab. The curren
 - The user must explicitly consent in the Voice Room before microphone access.
 - The user can delete the most recently saved Voice session from the Voice Room. Deleting a session cascades to its turns.
 - A broader session-history management screen is not included in this MVP.
+- Session rows are created by the Worker-backed database RPC only after adult verification; the browser cannot create a billable session row before this gate.
 
 ## Access control
 
@@ -39,7 +40,7 @@ The intended product audience is adults. If the product is ever opened to minors
 
 ## Current limits
 
-- Maximum 5 session records per UTC day (best-effort database count; not a concurrency-safe billing quota).
+- Maximum 5 session attempts per UTC day, enforced by a per-user PostgreSQL advisory transaction lock and a database-side count. This is an application usage cap, not a provider billing hard stop; provider-side spend limits are still required.
 - Frontend automatically ends a session after 20 minutes. This is a client-side guard, not a hard server-side duration guarantee.
 - Transcript analysis does not provide an official IELTS band score.
 - Pronunciation is explicitly marked not_assessed; transcript text alone is insufficient to assess pronunciation.
@@ -62,11 +63,13 @@ wrangler.toml contains non-secret Supabase and model settings. The Realtime API 
 10. Delete the saved session and verify its turns are cascade-deleted.
 11. Verify Text Mode still works unchanged.
 12. Verify a non-verified account receives HTTP 403 and an unauthenticated account receives HTTP 401.
-13. Verify the sixth daily session attempt is rejected; test concurrency separately before treating this as a billing control.
+13. Verify the sixth daily session attempt is rejected, including concurrent requests; retain provider-side spend limits because the application quota is not a hard billing control.
+14. Verify a user without the server-controlled adult flag cannot create a session row through the RPC or receive a Realtime client secret.
+15. Verify every report evidence quote and correction source phrase exists in the saved learner transcript; unsupported quotes must be removed.
 
 ## Automated checks
 
-The `Speaking Lab Voice checks` GitHub Actions workflow runs JavaScript syntax validation and static contract tests for the adult-verification gate, daily session cap, browser API-key isolation, and transcript-only pronunciation limitation. These checks do not replace browser-based end-to-end testing with a real provider session.
+The `Speaking Lab Voice checks` GitHub Actions workflow runs JavaScript syntax validation and static contract tests for the adult-verification gate, serialized database session creation, browser API-key isolation, transcript evidence validation, and transcript-only pronunciation limitation. These checks do not replace browser-based end-to-end testing with a real provider session.
 
 ## Deployment boundary
 
