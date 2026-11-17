@@ -15,9 +15,8 @@ export default {
   const incoming=req.headers.get('origin');
   if(incoming&&incoming!==allowed)return new Response('Origin not allowed',{status:403});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:headers(allowed)});
-  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY,model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash'},200,allowed);
+  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!(env.AI||env.GEMINI_API_KEY),hintReady:!!(env.AI&&typeof env.AI.run==='function'),hintProvider:env.AI?'Cloudflare Workers AI':null,model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash'},200,allowed);
   if(!['/evaluate','/generate','/hint'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
-  if(!env.GEMINI_API_KEY)return reply({error:'AI chưa được cấu hình: thiếu GEMINI_API_KEY.'},503,allowed);
   try{
    if(Number(req.headers.get('content-length')||0)>9e6)return reply({error:'Ghi âm quá lớn.'},413,allowed);
    const raw=await req.text();
@@ -25,67 +24,51 @@ export default {
    let b;try{b=JSON.parse(raw)}catch{return reply({error:'JSON không hợp lệ.'},400,allowed)}
 
    if(path==='/hint'){
-     const phrase=limit(b.phrase,180).trim(),meaning=limit(b.meaning,240).trim();
-     const topic=limit(b.topic,100).trim(),example=limit(b.example,500).trim();
-     if(phrase.length<3||!meaning||!phrase.includes(' '))
-       return reply({error:'Thiếu collocation hoặc nghĩa để tạo gợi ý.'},400,allowed);
-     const prompt='You are a thoughtful English speaking and writing tutor. Help a learner generate their OWN idea for one sentence using the target collocation. '+
-       'Target: '+JSON.stringify({collocation:phrase,meaning,topic,referenceExample:example})+'. '+
-       'Return exactly 3 DISTINCT, realistic, easy-to-personalise contexts. Each context must be a short situation in Vietnamese, '+
-       '3 to 6 concise English keywords or short phrases (not full sentences), and one guiding question in Vietnamese that helps the learner recall a real experience or form a specific idea. '+
-       'The hints must fit the collocation meaning and show natural situations where it can be used. '+
-       'Do NOT write a complete sample sentence, do NOT write the learner answer, and do NOT merely repeat the reference example. '+
-       'Avoid generic prompts. Prefer varied everyday, study, work, travel or personal contexts when relevant. '+
-       'Return ONLY JSON: {hints:[{situation:string,keywords:string[],guidingQuestion:string}]} with exactly 3 items. Vietnamese for situation and guidingQuestion; English for keywords.';
-     const models=[...new Set([env.GEMINI_MODEL||'gemini-3.5-flash-lite',env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash'])].slice(0,2);
-     const started=Date.now(),attempts=[];let parsed=null,lastError=null,modelUsed=null;
-     const redact=x=>{
-       let v=limit(x,240);
-       if(env.GEMINI_API_KEY)v=v.split(env.GEMINI_API_KEY).join('[REDACTED]');
-       return v.replace(/AIza[A-Za-z0-9_-]{20,}/g,'[REDACTED]').replace(/\s+/g,' ').trim();
-     };
-     for(let i=0;i<models.length;i++){
-       const model=models[i];
-       if(!/^[a-zA-Z0-9._-]+$/.test(model))return reply({error:'Model AI chưa hợp lệ.'},503,allowed);
-       const controller=new AbortController(),budget=i===0?14000:14000;
-       const timer=setTimeout(()=>controller.abort(),budget),began=Date.now();
-       let response=null,data=null;
-       try{
-         response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{
-           method:'POST',headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
-           body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],
-             // Keep this lightweight and model-agnostic: older Gemini models reject thinkingLevel,
-             // while newer Flash-Lite models manage minimal thinking by default.
-             generationConfig:{responseMimeType:'application/json',maxOutputTokens:1400}}),
-           signal:controller.signal
-         });
-         data=await response.json().catch(()=>({}));
-       }catch(err){
-         lastError={status:controller.signal.aborted?504:502,error:controller.signal.aborted?
-           'AI tạo gợi ý quá thời gian chờ.':'Không thể kết nối Gemini để tạo gợi ý.',detail:redact(err?.message||'')};
-         attempts.push({model,status:controller.signal.aborted?'timeout':'network',elapsedMs:Date.now()-began});
-       }finally{clearTimeout(timer)}
-       if(response?.ok&&data){
-         const raw=(data.candidates?.[0]?.content?.parts||[]).map(x=>x.text||'').join('').replace(/^\`\`\`(?:json)?/i,'').replace(/\`\`\`$/,'').trim();
-         try{parsed=JSON.parse(raw);modelUsed=model;attempts.push({model,status:200,elapsedMs:Date.now()-began});break}
-         catch(_){lastError={status:502,error:'Gemini trả về gợi ý không đúng định dạng.'};attempts.push({model,status:'invalid-json',elapsedMs:Date.now()-began})}
-       }else if(response&&!response.ok){
-         const status=response.status,detail=redact(data?.error?.message||'');
-         lastError={status:status===404?502:status,error:'Gemini không thể tạo gợi ý ('+status+').',detail};
-         attempts.push({model,status,elapsedMs:Date.now()-began});
-         if([401,403,429].includes(status))break;
-       }
-       if(i<models.length-1)await new Promise(resolve=>setTimeout(resolve,350));
-     }
-     if(!parsed)return reply({...lastError,attempts,elapsedMs:Date.now()-started},lastError?.status===504?504:502,allowed);
-     const hints=(Array.isArray(parsed.hints)?parsed.hints:[]).slice(0,3).map(h=>({
+    if(!env.AI||typeof env.AI.run!=='function')
+      return reply({error:'Cloudflare Workers AI chưa được kết nối với Speakwise.',code:'WORKERS_AI_NOT_CONFIGURED'},503,allowed);
+    const phrase=limit(b.phrase,180).trim(),meaning=limit(b.meaning,240).trim();
+    const topic=limit(b.topic,100).trim(),example=limit(b.example,500).trim();
+    if(phrase.length<3||!meaning||!phrase.includes(' '))
+      return reply({error:'Thiếu collocation hoặc nghĩa để tạo gợi ý.'},400,allowed);
+    const system='You are an expert English speaking and writing tutor. Help a learner generate their OWN ideas for one sentence using a target English collocation. Follow the requested output format exactly.';
+    const prompt='Create exactly 3 distinct, realistic, easy-to-personalise idea prompts for this collocation. '+
+      'Target: '+JSON.stringify({collocation:phrase,meaning,topic,referenceExample:example})+'. '+
+      'For each item provide: (1) a short situation in Vietnamese, (2) 3 to 6 concise English keywords or short phrases, not complete sentences, and (3) one guiding question in Vietnamese that helps the learner recall a real experience or form a specific idea. '+
+      'The situations must fit the collocation meaning and show natural usage. Do not write a complete sample sentence or the learner answer. Do not merely repeat the reference example. Avoid generic prompts; vary everyday, study, work, travel or personal contexts when relevant. '+
+      'Return ONLY a valid JSON object with this exact shape: {"hints":[{"situation":"Vietnamese situation","keywords":["English keyword","English keyword"],"guidingQuestion":"Vietnamese question"},{"situation":"...","keywords":["...","..."],"guidingQuestion":"..."},{"situation":"...","keywords":["...","..."],"guidingQuestion":"..."}]}. No Markdown fences or extra text.';
+    const models=[...new Set([env.HINT_MODEL||'@cf/google/gemma-4-26b-a4b-it',env.HINT_FALLBACK_MODEL||'@cf/zai-org/glm-4.7-flash'])].slice(0,2);
+    const started=Date.now(),attempts=[];let hints=null,modelUsed=null,lastError=null;
+    for(const model of models){
+     const began=Date.now();
+     try{
+      const output=await env.AI.run(model,{
+       messages:[{role:'system',content:system},{role:'user',content:prompt}],
+       chat_template_kwargs:{enable_thinking:false},
+       max_tokens:1200
+      },{rejectIfBusy:true});
+      const raw=typeof output==='string'?output:
+       (output?.choices?.[0]?.message?.content??output?.response??output?.result?.response??'');
+      const cleaned=String(raw).replace(/^\x60\x60\x60(?:json)?\s*/i,'').replace(/\s*\x60\x60\x60$/,'').trim();
+      const match=cleaned.match(/\{[\s\S]*\}/);
+      const parsed=JSON.parse(match?match[0]:cleaned);
+      const candidate=(Array.isArray(parsed?.hints)?parsed.hints:[]).slice(0,3).map(h=>({
        situation:limit(h?.situation,220).trim(),
        keywords:(Array.isArray(h?.keywords)?h.keywords:[]).slice(0,6).map(x=>limit(x,70).trim()).filter(Boolean),
        guidingQuestion:limit(h?.guidingQuestion,260).trim()
-     })).filter(h=>h.situation&&h.keywords.length>=2&&h.guidingQuestion);
-     if(!hints.length)return reply({error:'Gemini chưa tạo được gợi ý phù hợp. Hãy thử lại.'},502,allowed);
-     return reply({hints,modelUsed,elapsedMs:Date.now()-started},200,allowed);
+      })).filter(h=>h.situation&&h.keywords.length>=2&&h.guidingQuestion);
+      if(candidate.length!==3)throw new Error('Model did not return three complete hint objects.');
+      hints=candidate;modelUsed=model;
+      attempts.push({model,status:200,elapsedMs:Date.now()-began});
+      break;
+     }catch(err){
+      lastError=limit(err?.message||'Workers AI inference failed.',240);
+      attempts.push({model,status:'failed',elapsedMs:Date.now()-began});
+     }
+    }
+    if(!hints)return reply({error:'Cloudflare Workers AI chưa thể tạo gợi ý lúc này.',detail:lastError,attempts,elapsedMs:Date.now()-started},502,allowed);
+    return reply({hints,modelUsed,provider:'Cloudflare Workers AI',elapsedMs:Date.now()-started},200,allowed);
    }
+   if(!env.GEMINI_API_KEY)return reply({error:'AI chưa được cấu hình: thiếu GEMINI_API_KEY.'},503,allowed);
    if(path==='/generate'){
      const topic=String(b.topic||'').trim().slice(0,90);
      const level=String(b.level||'').toUpperCase();
