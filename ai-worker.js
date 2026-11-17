@@ -52,13 +52,13 @@ const workersAiTranscribe=async(env,audioBase64)=>{
 export default {
  async fetch(req,env) {
   const url=new URL(req.url),path=url.pathname;
-  if(path!=='/evaluate'&&path!=='/health'&&path!=='/generate'&&path!=='/hint'){return env.ASSETS?.fetch(req)||new Response('Not found',{status:404})}
+  if(!['/evaluate','/health','/generate','/hint','/conversation'].includes(path)){return env.ASSETS?.fetch(req)||new Response('Not found',{status:404})}
   const allowed=String(env.ALLOWED_ORIGIN||url.origin).replace(/\/$/,'');
   const incoming=req.headers.get('origin');
   if(incoming&&incoming!==allowed)return new Response('Origin not allowed',{status:403});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:headers(allowed)});
   if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY||!!env.AI?.run,providers:{gemini:!!env.GEMINI_API_KEY,workersAI:!!env.AI?.run},model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash',workersAIModel:WORKERS_AI_TEXT_MODEL},200,allowed);
-  if(!['/evaluate','/generate','/hint'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
+  if(!['/evaluate','/generate','/hint','/conversation'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
   if(!env.GEMINI_API_KEY&&!env.AI?.run)return reply({error:'AI chưa được cấu hình: cần GEMINI_API_KEY hoặc Workers AI binding.'},503,allowed);
   try{
    if(Number(req.headers.get('content-length')||0)>9e6)return reply({error:'Ghi âm quá lớn.'},413,allowed);
@@ -163,6 +163,82 @@ export default {
      })).filter(h=>h.situation&&h.keywords.length>=2&&h.guidingQuestion);
      if(!hints.length)return reply({error:'Gemini chưa tạo được gợi ý phù hợp. Hãy thử lại.'},502,allowed);
      return reply({hints,modelUsed,elapsedMs:Date.now()-started},200,allowed);
+   }
+   if(path==='/conversation'){
+     const topic=limit(b.topic,100).trim()||'Everyday conversation';
+     const level=['A2','B1','B2','C1'].includes(String(b.level||'').toUpperCase())?String(b.level).toUpperCase():'B1';
+     const mode=b.mode==='speak'?'speak':'text';
+     let userText=limit(b.message,1400).trim();
+     if(mode==='speak'){
+       if(typeof b.audioBase64!=='string'||b.audioBase64.length<1000||b.audioBase64.length>8e6||!/^[A-Za-z0-9+/=]+$/.test(b.audioBase64))
+         return reply({error:'Ghi âm không hợp lệ hoặc vượt giới hạn 6MB.'},400,allowed);
+       const mime=String(b.mimeType||'audio/webm').toLowerCase();
+       if(!['audio/webm','audio/mp4','audio/ogg','audio/wav','audio/mpeg'].includes(mime))
+         return reply({error:'Định dạng ghi âm chưa được hỗ trợ.'},415,allowed);
+       try{userText=await workersAiTranscribe(env,b.audioBase64)}
+       catch(transcribeError){return reply({error:'Không thể chuyển giọng nói thành văn bản.',detail:describeAIError(transcribeError)},502,allowed)}
+     }else if(userText.length<2){
+       return reply({error:'Hãy nhập câu trả lời trước khi gửi.'},400,allowed);
+     }
+     if(userText.length>1400)userText=userText.slice(0,1400);
+     const history=(Array.isArray(b.history)?b.history:[]).slice(-12).map(m=>({
+       role:m?.role==='assistant'?'assistant':'user',content:limit(m?.content,1400).trim()
+     })).filter(m=>m.content);
+     const targets=(Array.isArray(b.targetCollocations)?b.targetCollocations:[]).slice(0,8).map(x=>limit(x,100).trim()).filter(Boolean);
+     const prompt='You are SpeakWise Speaking Lab, a warm but rigorous English conversation partner and collocation coach. '+
+       'Continue a realistic spoken conversation about '+JSON.stringify(topic)+' at CEFR '+level+'. '+
+       'Conversation history (oldest first): '+JSON.stringify(history)+'. Latest learner turn: '+JSON.stringify(userText)+'. '+
+       'Optional collocations the learner wants to practise: '+JSON.stringify(targets)+'. '+
+       'Respond naturally to what the learner actually said, then ask exactly ONE relevant follow-up question in assistantMessage. '+
+       'Do not turn every response into a lecture or force collocations. Prioritise natural, context-appropriate language over complexity. '+
+       'Assess only evidence in the latest learner turn. feedback should be concise and in Vietnamese. '+
+       'collocationsUsed: list exact collocations genuinely used by learner, with a brief note on whether usage is natural. '+
+       'corrections: only genuine unnatural or incorrect word combinations, each with original, suggested, and explanation; do not invent errors. '+
+       'opportunities: at most 3 natural collocations that could improve this specific response, with Vietnamese meaning and a short example fragment; do not imply the learner must use all of them. '+
+       'If the answer is already natural, say so and avoid unnecessary rewriting. suggestedRevision should preserve meaning and be minimal; empty string if no revision is needed. '+
+       'Return ONLY JSON: {assistantMessage:string,feedback:{overall:string,collocationsUsed:[{phrase:string,note:string}],corrections:[{original:string,suggested:string,explanation:string}],opportunities:[{phrase:string,meaning:string,example:string}],suggestedRevision:string,oneTip:string}}';
+     const model=env.GEMINI_MODEL||'gemini-3.5-flash-lite';
+     let result=null,modelUsed=null,geminiDetail='';
+     if(env.GEMINI_API_KEY){
+       const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),18000);
+       try{
+         const response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{
+           method:'POST',headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
+           body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],
+             generationConfig:{temperature:0.35,responseMimeType:'application/json',maxOutputTokens:1500}}),
+           signal:controller.signal
+         });
+         const data=await response.json().catch(()=>({}));
+         if(response.ok){
+           const raw=(data.candidates?.[0]?.content?.parts||[]).map(x=>x.text||'').join('').trim().replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,'');
+           try{result=JSON.parse(raw);modelUsed=model}catch(parseError){geminiDetail='Gemini returned invalid JSON: '+describeAIError(parseError)}
+         }else{
+           geminiDetail=limit(data?.error?.message||('Gemini HTTP '+response.status),260);
+         }
+       }catch(err){geminiDetail=controller.signal.aborted?'Gemini timeout':describeAIError(err)}
+       finally{clearTimeout(timer)}
+     }else{geminiDetail='Gemini API key is not configured.'}
+     if(!result&&env.AI?.run){
+       try{result=await workersAiJson(env,prompt,1500);modelUsed='Cloudflare Workers AI ('+WORKERS_AI_TEXT_MODEL+')'}
+       catch(fallbackError){return reply({error:'AI conversation hiện không khả dụng.',detail:geminiDetail,workersAIDetail:describeAIError(fallbackError)},503,allowed)}
+     }
+     if(!result)return reply({error:'Chưa có nhà cung cấp AI khả dụng cho Speaking Lab.',detail:geminiDetail},503,allowed);
+     const feedback=result.feedback&&typeof result.feedback==='object'?result.feedback:{};
+     const cleanList=(arr,max,mapper)=>Array.isArray(arr)?arr.slice(0,max).map(mapper):[];
+     const output={
+       transcript:mode==='speak'?limit(userText,1400):'',
+       assistantMessage:limit(result.assistantMessage,900).trim()||'Thanks for sharing. Could you tell me a little more?',
+       feedback:{
+         overall:limit(feedback.overall,500).trim(),
+         collocationsUsed:cleanList(feedback.collocationsUsed,6,x=>({phrase:limit(x?.phrase,100),note:limit(x?.note,240)})).filter(x=>x.phrase),
+         corrections:cleanList(feedback.corrections,4,x=>({original:limit(x?.original,180),suggested:limit(x?.suggested,180),explanation:limit(x?.explanation,240)})).filter(x=>x.original&&x.suggested),
+         opportunities:cleanList(feedback.opportunities,3,x=>({phrase:limit(x?.phrase,100),meaning:limit(x?.meaning,180),example:limit(x?.example,220)})).filter(x=>x.phrase&&x.meaning),
+         suggestedRevision:limit(feedback.suggestedRevision,900).trim(),
+         oneTip:limit(feedback.oneTip,300).trim()
+       },
+       modelUsed
+     };
+     return reply(output,200,allowed);
    }
    if(path==='/generate'){
      const topic=String(b.topic||'').trim().slice(0,90);
