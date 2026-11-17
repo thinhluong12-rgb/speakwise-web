@@ -162,7 +162,7 @@ export default {
      }
      const createdSessionId=typeof created==='string'?created:(created?.id||created?.session_id);
      if(!createdSessionId)return reply({error:'Database did not return a Voice session ID.'},502,allowed);
-     return reply({provider:'gemini',ephemeralToken:tokenData.name,expiresAt:tokenData.expireTime||null,sessionId:createdSessionId,model,websocketUrl:'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained'},200,allowed);
+     return reply({provider:'gemini',ephemeralToken:tokenData.name,expiresAt:tokenData.expireTime||null,sessionId:createdSessionId,model,websocketUrl:'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained'},200,allowed);
    }
    if(path==='/voice/session'){
      if(!env.OPENAI_API_KEY)return reply({error:'Voice Mode chưa được cấu hình. Thiếu OPENAI_API_KEY trên Worker.'},503,allowed);
