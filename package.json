@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "test:speaking": "node --test tests/speaking-voice.test.mjs",
+    "check:speaking": "node --check ai-worker.js && node --check public/speaking-voice.js && npm run test:speaking"
   },
   "devDependencies": {
     "wrangler": "^4.47.0"
