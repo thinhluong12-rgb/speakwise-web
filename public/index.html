@@ -805,7 +805,12 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     const poolIds=studyPool().map(e=>e.id);
     if(!Array.isArray(ui.labIds))ui.labIds=[];
     if(!ui.labIds.length&&poolIds.length){resetLabSession();return}
+    const activeBefore=labCurrentId();
     ui.labIds=ui.labIds.filter(id=>store.entries.some(e=>e.id===id));
+    if(activeBefore){
+      const activeIndex=ui.labIds.indexOf(activeBefore);
+      ui.labAt=activeIndex>=0?activeIndex:Math.min(ui.labAt,ui.labIds.length);
+    }
     const current=labCurrentId();
     if(current&&!poolIds.includes(current)){resetLabSession();return}
     if(ui.labAt>ui.labIds.length)ui.labAt=ui.labIds.length;
@@ -1059,6 +1064,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
         body:JSON.stringify({phrase:entry.phrase,meaning:entry.meaning,topic:topic(entry.topicId)?.name||'',example:entry.example||''}),
         signal:controller.signal});
       const data=await response.json().catch(()=>({}));
+      if(ui.quiz?.answerId!==requestedEntryId)return;
       if(!response.ok){
         const diagnostics=[
           data.detail?'Chi tiết Gemini: '+data.detail:'',
@@ -1066,7 +1072,6 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
         ].filter(Boolean).join(' · ');
         throw new Error([data.error||'AI chưa thể tạo gợi ý. Hãy thử lại.',diagnostics].filter(Boolean).join(' — '));
       }
-      if(ui.quiz?.answerId!==requestedEntryId)return;
       if(!Array.isArray(data.hints)||!data.hints.length)throw new Error('AI chưa trả về gợi ý hợp lệ.');
       ui.hintResult=data.hints.slice(0,3);ui.hintError=null;
     }catch(err){ui.hintError=err.name==='AbortError'?'AI tạo gợi ý quá lâu. Vui lòng thử lại.':String(err.message||'Không thể lấy gợi ý AI.')}
