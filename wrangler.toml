@@ -10,7 +10,7 @@ run_worker_first = ["/evaluate", "/health"]
 [vars]
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_FALLBACK_MODEL = "gemini-3.8-flash"
-# Cloudflare Workers AI powers Learning Lab idea hints without a Gemini API key.
+# Cloudflare Workers AI is the fallback provider for Learning Lab idea hints.
 [ai]
 binding = "AI"
 
