@@ -127,7 +127,7 @@ export default {
      });
      const usageRows=await usageResponse.json().catch(()=>[]);
      if(!usageResponse.ok||!Array.isArray(usageRows))return reply({error:'Không thể kiểm tra hạn mức Voice Mode.'},503,allowed);
-     if(usageRows.length>5)return reply({error:'Bạn đã đạt giới hạn 5 phiên Voice Mode trong ngày. Hãy quay lại vào ngày mai.'},429,allowed);
+     if(usageRows.length>=5)return reply({error:'Bạn đã đạt giới hạn 5 phiên Voice Mode trong ngày. Hãy quay lại vào ngày mai.'},429,allowed);
      const topic=limit(b.topic,120).trim()||'Daily conversation';
      const level=['A2','B1','B2','C1'].includes(String(b.level||'').toUpperCase())?String(b.level).toUpperCase():'B1';
      const goals=(Array.isArray(b.learningGoals)?b.learningGoals:[]).slice(0,5).map(x=>limit(x,120).trim()).filter(Boolean);
