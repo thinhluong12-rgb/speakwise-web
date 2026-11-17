@@ -68,7 +68,7 @@ test('adult verification precedes provider credential issuance and quota row cre
 
 test('quota ledger is enforced by a non-callable private trigger function', () => {
   assert.match(quotaSchemaMigration, /create schema if not exists private/i);
-  assert.match(quotaMigration, /create table if not exists private\.speakwise_voice_daily_usage/i);
+  assert.match(quotaSchemaMigration, /create table if not exists private\.speakwise_voice_daily_usage/i);
   assert.match(quotaMigration, /security definer[\s\S]*set search_path = ''/i);
   assert.match(quotaMigration, /before insert on public\.speakwise_voice_sessions/i);
   assert.match(quotaMigration, /revoke all on function private\.enforce_speakwise_voice_daily_quota\(\) from public, anon, authenticated/i);
