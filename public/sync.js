@@ -34,7 +34,7 @@
   }
  }
  async function load(){
-  if(!enabled()||loading)return;loading=true;label('Đang đồng bộ…');
+  if(!enabled()||loading)return;loading=true;label('Tài khoản');
   try{
    const [topics,ents,progs,hiddens,activities,mistakes,prefs]=await Promise.all([
     api.from('speakwise_topics').select('*'),
@@ -105,8 +105,8 @@
    st.deletedIds=[...new Set([...(st.deletedIds||[]),...(hiddens.data||[]).map(x=>x.entry_id)])];
    st.entries=st.entries.filter(x=>!st.deletedIds.includes(x.id));
    try{localStorage.setItem('speakwise-collocation-studio-v1',JSON.stringify(st))}catch(_){}
-   ctx.render();label('Đã đồng bộ');
-  }catch(e){label('Đồng bộ lỗi');tell(e.message||String(e))}finally{loading=false}
+   ctx.render();label('Tài khoản');
+  }catch(e){label('Tài khoản');tell(e.message||String(e))}finally{loading=false}
  }
  async function push(){
   if(!enabled()||loading||writing)return;
@@ -155,15 +155,15 @@
    if(prefResult.error)throw prefResult.error;
    const hidden=[...new Set(st.deletedIds||[])].map(entry_id=>({user_id:user.id,entry_id}));
    if(hidden.length){const {error}=await api.from('speakwise_hidden').upsert(hidden,{onConflict:'user_id,entry_id'});if(error)throw error;}
-   label('Đã đồng bộ');
-  }catch(e){label('Đồng bộ lỗi');tell('Không đồng bộ được, nhưng vẫn đã lưu cục bộ: '+(e.message||String(e)))}finally{writing=false}
+   label('Tài khoản');
+  }catch(e){label('Tài khoản');tell('Không đồng bộ được, nhưng vẫn đã lưu cục bộ: '+(e.message||String(e)))}finally{writing=false}
  }
  function scheduleSave(){if(!enabled()||loading)return;clearTimeout(timer);timer=setTimeout(push,1200)}
  async function init(context){
   ctx=context;
   $('syncButton')?.addEventListener('click',dialog);
-  if(!cfg.supabaseUrl||!cfg.supabasePublishableKey){label('Lưu cục bộ');return}
-  if(!window.supabase?.createClient){label('Thiếu Supabase SDK');return}
+  if(!cfg.supabaseUrl||!cfg.supabasePublishableKey){label('Đăng nhập');return}
+  if(!window.supabase?.createClient){label('Đăng nhập');return}
   api=window.supabase.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey);
   const {data,error}=await api.auth.getSession();
   if(error){tell(error.message);return;}
