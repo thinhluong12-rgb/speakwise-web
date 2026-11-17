@@ -60,8 +60,8 @@
        if(error)throw error;
        if(data?.session){user=data.user;setGate(false);label('Tài khoản');host.classList.remove('open');await load();scheduleSave();}
        else{
-        message.textContent='Tài khoản đã được tạo. Hãy xác nhận địa chỉ email qua liên kết chúng tôi vừa gửi trước khi đăng nhập.';
-        body.innerHTML='<p class="sw-sync-login-note">Kiểm tra hộp thư đến và thư mục Spam. Sau khi xác nhận email, quay lại đây để đăng nhập.</p><button type="button" class="btn btn-primary sw-sync-submit" id="swAuthReturn">Tôi đã xác nhận email – Đăng nhập</button>';
+        message.textContent='Nếu email này chưa có tài khoản, hãy kiểm tra hộp thư để xác nhận. Nếu bạn đã đăng ký trước đó, hãy chuyển sang đăng nhập hoặc đặt lại mật khẩu.';
+        body.innerHTML='<p class="sw-sync-login-note">Lưu ý: đăng ký lại bằng một email đã tồn tại không thay đổi mật khẩu cũ. Nếu không nhớ mật khẩu, chọn “Quên mật khẩu?” ở màn hình đăng nhập.</p><button type="button" class="btn btn-primary sw-sync-submit" id="swAuthReturn">Chuyển sang đăng nhập</button>';
         $('swAuthReturn').onclick=()=>renderForm('login');
        }
       }else{
@@ -69,7 +69,13 @@
        if(error)throw error;
        user=data.user;setGate(false);label('Tài khoản');host.classList.remove('open');await load();scheduleSave();
       }
-     }catch(ex){err.textContent=ex.message||'Không thể xác thực tài khoản. Vui lòng thử lại.';err.hidden=false;button.disabled=false;button.textContent=isRegister?'Tạo tài khoản':'Đăng nhập';}
+     }catch(ex){
+      const raw=String(ex.message||'');
+      err.textContent=(!isRegister&&/invalid login credentials/i.test(raw))
+       ?'Email hoặc mật khẩu không chính xác. Nếu bạn đã đăng ký lại bằng email cũ, mật khẩu sẽ không được thay đổi. Hãy dùng mật khẩu ban đầu hoặc chọn “Quên mật khẩu?” để tạo mật khẩu mới.'
+       :(raw||'Không thể xác thực tài khoản. Vui lòng thử lại.');
+      err.hidden=false;button.disabled=false;button.textContent=isRegister?'Tạo tài khoản':'Đăng nhập';
+     }
     };
    };
    renderForm('login');
