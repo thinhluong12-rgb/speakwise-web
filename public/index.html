@@ -614,7 +614,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   const saved=readSaved();
   const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[],mistakes:Array.isArray(saved.mistakes)?saved.mistakes:[],deletedMistakeIds:Array.isArray(saved.deletedMistakeIds)?saved.deletedMistakeIds:[],settings:{dailyGoal:8,...(saved.settings||{})},lastPractice:saved.lastPractice||null,learningJourney:saved.learningJourney||null};
   store.entries=store.entries.filter(e=>!store.deletedIds.includes(e.id));
-  const ui={view:'home',homeTab:'overview',labStep:'learn',reviewIds:[],reviewAt:0,reviewRevealed:false,reviewAll:false,hintBusy:false,hintResult:null,hintError:null,section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false,focusMode:false,journey:null,journeyReturn:'home'};
+  const ui={view:'home',homeTab:'overview',labStep:'learn',labIds:[],labAt:0,reviewIds:[],reviewAt:0,reviewRevealed:false,hintBusy:false,hintResult:null,hintError:null,section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false,focusMode:false,journey:null,journeyReturn:'home'};
   const GROUPS_KEY='speakwise-collapsed-groups-v3';
   let collapsedGroups={life:false,ielts:false};
   try { const remembered=JSON.parse(localStorage.getItem(GROUPS_KEY)||'{}'); collapsedGroups={life:!!remembered.life,ielts:!!remembered.ielts}; } catch (_) {}
@@ -776,8 +776,72 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     wrap.innerHTML=`<div style="overflow-x:auto"><table class="library-table"><thead><tr><th>Collocation / IPA</th><th>Nghĩa tiếng Việt</th><th>Ví dụ trong ngữ cảnh</th><th style="text-align:right">Thao tác</th></tr></thead><tbody>${sub.map(e=>{const t=topic(e.topicId)||{};return `<tr data-action="detail" data-id="${esc(e.id)}" tabindex="0" aria-label="Xem ${esc(e.phrase)}"><td><div class="phrase-cell">${esc(e.phrase)}</div>${e.ipa?`<div class="phrase-ipa">${esc(e.ipa)}</div>`:''}<span class="tag ${t.section==='ielts'?'blue':''}">${esc(t.name||'')}</span></td><td><div class="meaning-cell">${esc(e.meaning)}</div></td><td><div class="example-cell">${esc(e.example)}</div></td><td><div class="action-group"><button class="icon-button" title="Nghe phát âm" aria-label="Phát âm ${esc(e.phrase)}" data-action="speak" data-id="${esc(e.id)}">${icon('volume')}</button><button class="icon-button ${progress(e.id).starred?'is-on':''}" title="Đánh dấu yêu thích" aria-label="Yêu thích ${esc(e.phrase)}" data-action="star" data-id="${esc(e.id)}">${icon('star')}</button></div></td></tr>`}).join('')}</tbody></table></div><div class="table-bottom"><span>Hiển thị ${(ui.page-1)*ui.perPage+1}–${Math.min(ui.page*ui.perPage,arr.length)} / ${arr.length} cụm từ</span><div class="pagination"><button data-action="page" data-page="${ui.page-1}" ${ui.page===1?'disabled':''}>‹ Trước</button><button data-action="page" data-page="${ui.page+1}" ${ui.page===pages?'disabled':''}>Tiếp ›</button></div></div>`;
   }
   function scopeOptions(selected='all'){return `<option value="all" ${selected==='all'?'selected':''}>Tất cả chủ đề</option>`+store.topics.map(t=>`<option value="${esc(t.id)}" ${selected===t.id?'selected':''}>${t.section==='life'?'Daily Life':'IELTS'} · ${esc(t.name)}</option>`).join('')}
-  function studyPool(){let arr=ui.quizTopic==='all'?[...store.entries]:store.entries.filter(e=>e.topicId===ui.quizTopic);if(ui.quizScope==='due')arr=arr.filter(e=>{let p=progress(e.id);return p.level>0&&p.nextReview&&p.nextReview<=localDay()});if(ui.quizScope==='star')arr=arr.filter(e=>progress(e.id).starred);return arr}
-  function makeDeck(){ui.deck=studyPool().map(e=>e.id); for(let i=ui.deck.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[ui.deck[i],ui.deck[j]]=[ui.deck[j],ui.deck[i]]} ui.deckAt=0;ui.flipped=false;}
+  function studyPool(){
+    let arr=ui.quizTopic==='all'?[...store.entries]:store.entries.filter(e=>e.topicId===ui.quizTopic);
+    if(ui.quizScope==='due')arr=arr.filter(e=>{let p=progress(e.id);return p.level>0&&p.nextReview&&p.nextReview<=localDay()});
+    if(ui.quizScope==='star')arr=arr.filter(e=>progress(e.id).starred);
+    if(ui.quizScope==='learned')arr=arr.filter(e=>Number(progress(e.id).level)>0);
+    return arr;
+  }
+  function labCurrentId(){return ui.labIds?.[ui.labAt]||null}
+  function syncLabPointers(){
+    ui.deck=ui.labIds;ui.deckAt=ui.labAt;
+    ui.reviewIds=ui.labIds;ui.reviewAt=ui.labAt;
+    ui.quizSeen=ui.labIds.slice(0,Math.min(ui.labIds.length,ui.labAt+1));
+    const id=labCurrentId();
+    if(!id||ui.quiz?.answerId!==id)ui.quiz=null;
+  }
+  function resetLabSession(){
+    cleanupAudio();
+    ui.labIds=shuffle(studyPool().map(e=>e.id));ui.labAt=0;
+    ui.flipped=false;ui.reviewRevealed=false;
+    ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;
+    ui.showAnswer=false;ui.recallText='';
+    ui.sentenceText='';ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceBusy=false;
+    ui.hintResult=null;ui.hintError=null;ui.hintBusy=false;
+    syncLabPointers();
+  }
+  function ensureLabSession(){
+    const poolIds=studyPool().map(e=>e.id);
+    if(!Array.isArray(ui.labIds))ui.labIds=[];
+    if(!ui.labIds.length&&poolIds.length){resetLabSession();return}
+    const activeBefore=labCurrentId();
+    ui.labIds=ui.labIds.filter(id=>store.entries.some(e=>e.id===id));
+    if(activeBefore){
+      const activeIndex=ui.labIds.indexOf(activeBefore);
+      ui.labAt=activeIndex>=0?activeIndex:Math.min(ui.labAt,ui.labIds.length);
+    }
+    const current=labCurrentId();
+    if(current&&!poolIds.includes(current)){resetLabSession();return}
+    if(ui.labAt>ui.labIds.length)ui.labAt=ui.labIds.length;
+    syncLabPointers();
+  }
+  function labCurrentEntry(){
+    ensureLabSession();
+    const id=labCurrentId();
+    return id?store.entries.find(e=>e.id===id)||null:null;
+  }
+  function advanceLab(){
+    if(!ui.labIds.length||ui.labAt>=ui.labIds.length)return;
+    ui.labAt++;
+    ui.flipped=false;ui.reviewRevealed=false;
+    ui.quiz=null;ui.showAnswer=false;ui.recallText='';
+    ui.sentenceText='';ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceBusy=false;
+    ui.hintResult=null;ui.hintError=null;ui.hintBusy=false;
+    cleanupAudio();syncLabPointers();
+  }
+  function ensureQuizForCurrent(){
+    const answer=labCurrentEntry();
+    if(!answer){ui.quiz=null;return null}
+    if(ui.quiz?.answerId===answer.id&&Array.isArray(ui.quiz.options)&&ui.quiz.options.length)return ui.quiz;
+    const pool=studyPool();
+    let distractors=shuffle(pool.filter(e=>e.id!==answer.id));
+    if(distractors.length<3)distractors=shuffle([...distractors,...store.entries.filter(e=>e.id!==answer.id&&!distractors.includes(e))]);
+    ui.quiz={answerId:answer.id,options:shuffle([answer,...distractors.slice(0,3)].map(e=>({id:e.id,phrase:e.phrase}))),selected:null,isCorrect:null};
+    ui.showAnswer=false;ui.recallText='';
+    return ui.quiz;
+  }
+  function makeDeck(){resetLabSession();}
   function practiceHeader(view){
     const tabs=[['flashcards','learn','Learn','layers'],['memory','recall','Recall','brain'],
       ['apply','apply','Apply','pen'],['review','review','Review','refresh']];
@@ -785,11 +849,11 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       '<button role="tab" type="button" data-action="studyTab" data-mode="'+mode+'" aria-selected="'+(view===target)+'" class="'+(view===target?'active':'')+'">'+icon(svg)+' '+label+'</button>').join('')+'</div>'+
       '<div class="practice-filters">'+
       '<select class="filter-select" aria-label="Chọn topic" id="practiceTopic">'+scopeOptions(ui.quizTopic)+'</select>'+
-      (view==='review'?'<select class="filter-select" aria-label="Lọc danh sách Review" id="practiceScope"><option value="all" '+(ui.quizScope==='all'?'selected':'')+'>'+(ui.reviewAll?'Tất cả cụm đã học':'Đến hạn ôn ('+dueCount()+')')+'</option>'+
-      '<option value="star" '+(ui.quizScope==='star'?'selected':'')+'>Đến hạn · Đã đánh dấu</option></select>':
-      '<select class="filter-select" aria-label="Chọn bộ từ" id="practiceScope"><option value="all" '+(ui.quizScope==='all'?'selected':'')+'>Tất cả cụm từ</option>'+
+      '<select class="filter-select" aria-label="Chọn bộ từ dùng chung cho Learning Lab" id="practiceScope">'+
+      '<option value="all" '+(ui.quizScope==='all'?'selected':'')+'>Tất cả collocations</option>'+
       '<option value="due" '+(ui.quizScope==='due'?'selected':'')+'>Đến hạn ôn ('+dueCount()+')</option>'+
-      '<option value="star" '+(ui.quizScope==='star'?'selected':'')+'>Đã đánh dấu ('+savedCount()+')</option></select>')+
+      '<option value="star" '+(ui.quizScope==='star'?'selected':'')+'>Đã đánh dấu ('+savedCount()+')</option>'+
+      '<option value="learned" '+(ui.quizScope==='learned'?'selected':'')+'>Đã học</option></select>'+
       '<button class="btn btn-muted" data-action="restart">'+icon('refresh')+' Bắt đầu lại</button>'+
       '<button class="btn btn-muted sw-focus-button" data-action="toggleFocus">'+icon('layers')+' '+(ui.focusMode?'Thoát Focus':'Focus Mode')+'</button></div>';
   }
@@ -801,8 +865,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     if(at<0)return esc(txt);
     return esc(txt.slice(0,at))+'<strong>'+esc(txt.slice(at,at+phrase.length))+'</strong>'+esc(txt.slice(at+phrase.length));
   }
-  function flashcards(){if(!ui.deck.length)makeDeck();
-    const current=store.entries.find(e=>e.id===ui.deck[ui.deckAt]);
+  function flashcards(){ensureLabSession();
+    const current=labCurrentEntry();
     let card;
     if(!current)card='<div class="empty-state"><div class="empty-icon">'+icon('checkCircle')+'</div><b>Đã hoàn thành hoặc chưa có từ phù hợp</b><p>Chọn bộ từ khác hoặc bắt đầu lại.</p><button class="btn btn-primary" data-action="restart">Ôn lại</button></div>';
     else card='<div class="flashcard sw-flashcard" data-action="flip" role="button" tabindex="0" aria-label="Lật thẻ">'+
@@ -820,7 +884,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       practiceHeader('flashcards')+swProgress(Math.min(ui.deckAt,ui.deck.length),ui.deck.length)+card+'</section></div>';
   }
   function shuffle(a){let copy=[...a];for(let i=copy.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[copy[i],copy[j]]=[copy[j],copy[i]]}return copy}
-  function nextQuiz(){cleanupAudio();ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceText='';ui.sentenceBusy=false;ui.hintResult=null;ui.hintError=null;ui.hintBusy=false;let pool=studyPool();let available=pool.filter(e=>!ui.quizSeen.includes(e.id));if(!available.length){ui.quizSeen=[];available=pool}if(!available.length){ui.quiz=null;return}const answer=available[Math.floor(Math.random()*available.length)];ui.quizSeen.push(answer.id);let distractors=shuffle(pool.filter(e=>e.id!==answer.id));if(distractors.length<3)distractors=shuffle([...distractors,...store.entries.filter(e=>e.id!==answer.id&&!distractors.includes(e))]);ui.quiz={answerId:answer.id,options:shuffle([answer,...distractors.slice(0,3)].map(e=>({id:e.id,phrase:e.phrase}))),selected:null,isCorrect:null};ui.showAnswer=false;ui.recallText=''}
+  function nextQuiz(){advanceLab();return ensureQuizForCurrent()}
   function scoreLabel(score){return score>=85?'Rất tốt':score>=70?'Khá tốt':score>=50?'Cần cải thiện':'Cần luyện thêm'}
   function scoreTone(score){return score>=70?'good':score>=50?'fair':'weak'}
   function highlightAnswer(raw,highlights){
@@ -898,10 +962,15 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       </div>`;
   }
   function quiz(){
-    if(!ui.quiz)nextQuiz();
-    const q=ui.quiz,current=q&&store.entries.find(e=>e.id===q.answerId),sentence=ui.view==='apply';
+    const q=ensureQuizForCurrent(),current=labCurrentEntry(),sentence=ui.view==='apply';
     let body='';
-    if(!current)body='<div class="empty-state"><div class="empty-icon">'+icon('brain')+'</div><b>Chưa có từ phù hợp</b><p>Hãy chọn một topic khác.</p></div>';
+    if(!current){
+      const completed=ui.labIds.length>0&&ui.labAt>=ui.labIds.length;
+      body='<div class="empty-state"><div class="empty-icon">'+icon(completed?'checkCircle':'brain')+'</div><b>'+
+        (completed?'Đã hoàn thành bộ từ':'Chưa có collocation phù hợp')+'</b><p>'+
+        (completed?'Bạn đã luyện hết các collocations trong bộ từ này.':'Hãy đổi topic hoặc bộ lọc để tiếp tục.')+
+        '</p><button class="btn btn-primary" data-action="restart">'+icon('refresh')+' '+(completed?'Luyện lại bộ từ':'Tải lại bộ từ')+'</button></div>';
+    }
     else{
       body=(sentence?'<div class="sw-skill-tabs"><button class="'+(ui.sentenceMode==='write'?'active':'')+'" data-action="sentenceMode" data-mode="write">'+icon('pen')+' Luyện viết</button><button class="'+(ui.sentenceMode==='speak'?'active':'')+'" data-action="sentenceMode" data-mode="speak">'+icon('microphone')+' Luyện nói</button></div>':
         '<div class="quiz-switch"><button class="'+(ui.quizMode==='multiple'?'active':'')+'" data-action="quizMode" data-mode="multiple">Trắc nghiệm</button>'+
@@ -922,33 +991,25 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       }
     }
     return '<div class="practice-layout sw-study-single"><section class="practice-panel sw-study-panel">'+
-      practiceHeader(sentence?'apply':'memory')+swProgress(Math.min(ui.quizSeen.length,studyPool().length),studyPool().length)+body+'</section></div>';
-  }
-  function reviewPool(all=false){
-    let arr=store.entries.filter(e=>{
-      const p=progress(e.id);
-      return all?Number(p.level)>0:(Number(p.level)>0&&p.nextReview&&p.nextReview<=localDay());
-    });
-    if(ui.quizTopic!=='all')arr=arr.filter(e=>e.topicId===ui.quizTopic);
-    if(ui.quizScope==='star')arr=arr.filter(e=>progress(e.id).starred);
-    return arr.sort((a,b)=>String(progress(a.id).nextReview||'').localeCompare(String(progress(b.id).nextReview||''))||
-      String(progress(a.id).lastReviewed||'').localeCompare(String(progress(b.id).lastReviewed||'')));
-  }
-  function prepareReview(all=false){
-    ui.reviewIds=reviewPool(all).map(e=>e.id);ui.reviewAt=0;ui.reviewRevealed=false;ui.reviewAll=all;
+      practiceHeader(sentence?'apply':'memory')+swProgress(Math.min(ui.labAt,ui.labIds.length),ui.labIds.length)+body+'</section></div>';
   }
   function reviewLab(){
-    const ids=ui.reviewIds||[],total=ids.length,entry=store.entries.find(e=>e.id===ids[ui.reviewAt]);
+    ensureLabSession();
+    const total=ui.labIds.length,entry=labCurrentEntry();
     const panelStart='<div class="practice-layout sw-study-single"><section class="practice-panel sw-study-panel">'+practiceHeader('review');
-    if(!total)return panelStart+'<div class="sw-review-empty">'+icon('checkCircle')+'<h2>Không có collocation đến hạn</h2>'+
-      '<p>Danh sách Review chỉ hiển thị những cụm đã học và đến lịch ôn. Bạn có thể quay lại sau hoặc tự kiểm tra toàn bộ cụm đã học.</p>'+
-      (store.entries.some(e=>Number(progress(e.id).level)>0)?'<button class="btn btn-primary" data-action="reviewAll">'+icon('refresh')+' Ôn lại các cụm đã học</button>':'<button class="btn btn-primary" data-action="studyTab" data-mode="learn">Bắt đầu Learn</button>')+
-      '</div></section></div>';
-    if(ui.reviewAt>=total||!entry)return panelStart+'<div class="sw-review-empty">'+icon('checkCircle')+'<h2>Hoàn thành phiên Review</h2>'+
-      '<p>Bạn đã xử lý '+total+' collocations trong phiên này. Những cụm cần ôn lại sẽ được đưa trở lại lịch phù hợp.</p>'+
-      '<button class="btn btn-primary" data-action="reviewRestart">Kiểm tra danh sách đến hạn</button></div></section></div>';
-    return panelStart+swProgress(ui.reviewAt,total)+
-      '<div class="sw-review-session-head"><span>RETRIEVAL PRACTICE</span><strong>'+(ui.reviewAt+1)+' / '+total+'</strong></div>'+
+    if(!total){
+      const hasLearned=store.entries.some(e=>Number(progress(e.id).level)>0);
+      return panelStart+'<div class="sw-review-empty">'+icon('checkCircle')+'<h2>'+
+        (ui.quizScope==='due'?'Không có collocation đến hạn':'Không có collocation phù hợp')+'</h2>'+
+        '<p>Review sử dụng cùng collocation và bộ từ với Learn, Recall và Apply. Hãy đổi bộ lọc hoặc chọn các cụm đã học.</p>'+
+        (hasLearned?'<button class="btn btn-primary" data-action="reviewAll">'+icon('refresh')+' Ôn lại các cụm đã học</button>':'<button class="btn btn-primary" data-action="studyTab" data-mode="learn">Bắt đầu Learn</button>')+
+        '</div></section></div>';
+    }
+    if(ui.labAt>=total||!entry)return panelStart+swProgress(total,total)+'<div class="sw-review-empty">'+icon('checkCircle')+'<h2>Hoàn thành bộ từ</h2>'+
+      '<p>Bạn đã đi hết bộ từ đang dùng chung trong Learning Lab. Chọn bắt đầu lại để luyện từ đầu.</p>'+
+      '<button class="btn btn-primary" data-action="reviewRestart">Bắt đầu lại</button></div></section></div>';
+    return panelStart+swProgress(ui.labAt,total)+
+      '<div class="sw-review-session-head"><span>RETRIEVAL PRACTICE</span><strong>'+(ui.labAt+1)+' / '+total+'</strong></div>'+
       '<div class="flashcard quiz-prompt sw-prompt sw-review-prompt"><div class="flashcard-hint">MEANING → COLLOCATION</div>'+
       '<h2>'+esc(entry.meaning)+'</h2><p class="target-meaning">'+esc(topic(entry.topicId)?.name||'Topic Collocations')+'</p></div>'+
       (!ui.reviewRevealed?'<div class="sw-review-actions"><p>Hãy nhớ lại collocation tiếng Anh trước khi hiện đáp án.</p>'+
@@ -993,6 +1054,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   async function requestAIHint(){
     if(ui.hintBusy||!ui.quiz)return;
     const entry=store.entries.find(e=>e.id===ui.quiz.answerId);if(!entry)return;
+    const requestedEntryId=entry.id;
     if(!aiEndpoint){ui.hintError='Chưa có kết nối AI. Hãy kiểm tra cấu hình dịch vụ.';render();return}
     ui.hintBusy=true;ui.hintError=null;ui.hintResult=null;render();
     const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),35000);
@@ -1002,7 +1064,14 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
         body:JSON.stringify({phrase:entry.phrase,meaning:entry.meaning,topic:topic(entry.topicId)?.name||'',example:entry.example||''}),
         signal:controller.signal});
       const data=await response.json().catch(()=>({}));
-      if(!response.ok)throw new Error(data.error||data.detail||'AI chưa thể tạo gợi ý. Hãy thử lại.');
+      if(ui.quiz?.answerId!==requestedEntryId)return;
+      if(!response.ok){
+        const diagnostics=[
+          data.detail?'Chi tiết Gemini: '+data.detail:'',
+          Array.isArray(data.attempts)&&data.attempts.length?'Model thử: '+data.attempts.map(a=>a.model+' ('+a.status+')').join(', '):''
+        ].filter(Boolean).join(' · ');
+        throw new Error([data.error||'AI chưa thể tạo gợi ý. Hãy thử lại.',diagnostics].filter(Boolean).join(' — '));
+      }
       if(!Array.isArray(data.hints)||!data.hints.length)throw new Error('AI chưa trả về gợi ý hợp lệ.');
       ui.hintResult=data.hints.slice(0,3);ui.hintError=null;
     }catch(err){ui.hintError=err.name==='AbortError'?'AI tạo gợi ý quá lâu. Vui lòng thử lại.':String(err.message||'Không thể lấy gợi ý AI.')}
@@ -1194,8 +1263,11 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function retryMistake(id){
     const m=store.mistakes.find(x=>x.id===id),entry=store.entries.find(x=>x.id===m?.entryId);
     if(!entry){toast('Không tìm thấy collocation.');return}
-    ui.quizTopic=entry.topicId;ui.quizScope='all';ui.sentenceMode=m.mode==='speak'?'speak':'write';goView('apply');
-    ui.quiz={answerId:entry.id,options:[],selected:null,isCorrect:null};ui.sentenceText='';render();
+    ui.quizTopic=entry.topicId;ui.quizScope='all';ui.sentenceMode=m.mode==='speak'?'speak':'write';
+    resetLabSession();
+    ui.labIds=[entry.id,...ui.labIds.filter(x=>x!==entry.id)];ui.labAt=0;syncLabPointers();
+    goView('apply');
+    ui.sentenceText='';render();
     toast('Hãy tạo một câu mới để kiểm chứng khả năng vận dụng.');
   }
   function render(){document.getElementById('appShell')?.classList.toggle('sw-focus-mode',ui.focusMode);sidebar();header();document.getElementById('pageContent').innerHTML=ui.view==='home'?home():ui.view==='topics'?library():ui.view==='flashcards'?flashcards():ui.view==='review'?reviewLab():ui.view==='mistakes'?mistakesPage():ui.view==='journey'?renderJourney():quiz();if(ui.view==='topics'&&ui.topic!=='all')libraryTable();renderIcons();}
@@ -1444,9 +1516,12 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     writeRoute(true);
   }
   function goView(v,{fromRoute=false}={}){if(['apply','journey'].includes(ui.view)&&v!==ui.view)cleanupAudio();ui.focusMode=false;ui.view=v;
-    if(v==='flashcards')makeDeck();
-    if(v==='memory'||v==='apply'){ui.quizMode=v==='apply'?'sentence':ui.quizMode==='sentence'?'multiple':ui.quizMode;ui.quizSeen=[];ui.quiz=null;ui.quizCorrect=0;ui.quizTotal=0;ui.hintResult=null;ui.hintError=null}
-    if(v==='review'){ui.quizScope='all';prepareReview()}
+    if(['flashcards','memory','apply','review'].includes(v)){
+      if(v==='apply')ui.quizMode='sentence';
+      else if(v==='memory'&&ui.quizMode==='sentence')ui.quizMode='multiple';
+      ensureLabSession();
+      if(v==='memory'||v==='apply')ensureQuizForCurrent();
+    }
     if(['flashcards','memory','apply','review'].includes(v)){store.lastPractice={view:v,date:localDay()};save()}
     render();if(!fromRoute)writeRoute();
     document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open');
@@ -1501,8 +1576,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'edit':entryModal(id);break;
       case 'delete':if(confirm('Bạn có chắc muốn xoá collocation này khỏi thư viện?')){store.entries=store.entries.filter(x=>x.id!==id);store.deletedIds.push(id);delete store.progress[id];save();closeDrawer();render();toast('Đã xoá cụm từ.')}break;
       case 'flip':ui.flipped=!ui.flipped;render();break;
-      case 'rate':review(ui.deck[ui.deckAt],rating,{action:'flashcard',correct:rating!=='hard'});ui.deckAt++;ui.flipped=false;render();break;
-      case 'restart':cleanupAudio();if(ui.view==='flashcards')makeDeck();else if(ui.view==='review')prepareReview();else {ui.quiz=null;ui.quizSeen=[];ui.quizCorrect=0;ui.quizTotal=0}render();break;
+      case 'rate':{const currentId=labCurrentId();if(currentId)review(currentId,rating,{action:'flashcard',correct:rating!=='hard'});advanceLab();render();break;}
+      case 'restart':resetLabSession();render();break;
       case 'quizMode':cleanupAudio();ui.quizMode=mode;ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;ui.sentenceResult=null;ui.sentenceError=null;render();writeRoute();break;
       case 'sentenceMode':cleanupAudio();ui.sentenceMode=mode;ui.sentenceResult=null;ui.sentenceError=null;ui.hintResult=null;ui.hintError=null;render();writeRoute();break;
       case 'saveEndpoint':{
@@ -1528,13 +1603,13 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'evaluateSentence':evaluateSentence();break;
       case 'requestHint':requestAIHint();break;
       case 'reviewReveal':ui.reviewRevealed=true;render();break;
-      case 'reviewAll':prepareReview(true);render();break;
-      case 'reviewRestart':prepareReview(false);render();break;
+      case 'reviewAll':ui.quizScope='learned';resetLabSession();render();break;
+      case 'reviewRestart':resetLabSession();render();break;
       case 'reviewRate':{
-        const currentId=ui.reviewIds[ui.reviewAt];
+        const currentId=labCurrentId();
         const correct=!['again','hard'].includes(rating);
-        review(currentId,rating,{action:'spaced-review',correct});
-        ui.reviewAt++;ui.reviewRevealed=false;render();break;
+        if(currentId)review(currentId,rating,{action:'spaced-review',correct});
+        advanceLab();render();break;
       }
       case 'skipSentence':nextQuiz();render();break;
       case 'quizAnswer':quizAnswer(id);break;
@@ -1543,7 +1618,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     }
   });
   document.addEventListener('input',e=>{if(e.target.id==='searchInput'){ui.query=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='recallInput')ui.recallText=e.target.value;if(e.target.id==='sentenceInput')ui.sentenceText=e.target.value});
-  document.addEventListener('change',e=>{if(e.target.id==='statusFilter'){ui.filter=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='practiceTopic'||e.target.id==='practiceScope'){cleanupAudio();ui.quizTopic=document.getElementById('practiceTopic').value;ui.quizScope=document.getElementById('practiceScope').value;ui.deck=[];ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;if(ui.view==='flashcards')makeDeck();else if(ui.view==='review')prepareReview();else nextQuiz();render()}if(e.target.id==='dailyGoalSelect'){store.settings.dailyGoal=Number(e.target.value)||8;save();render()}if(e.target.id==='entryTopic')updateFormTopics();if(e.target.id==='aiTopicSelect'){const box=document.getElementById('aiNewTopicField');if(box)box.hidden=e.target.value!=='__new__'}});
+  document.addEventListener('change',e=>{if(e.target.id==='statusFilter'){ui.filter=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='practiceTopic'||e.target.id==='practiceScope'){ui.quizTopic=document.getElementById('practiceTopic').value;ui.quizScope=document.getElementById('practiceScope').value;resetLabSession();render()}if(e.target.id==='dailyGoalSelect'){store.settings.dailyGoal=Number(e.target.value)||8;save();render()}if(e.target.id==='entryTopic')updateFormTopics();if(e.target.id==='aiTopicSelect'){const box=document.getElementById('aiNewTopicField');if(box)box.hidden=e.target.value!=='__new__'}});
   document.addEventListener('submit',e=>{if(e.target.id==='entryForm'){e.preventDefault();saveEntry(e.target)}if(e.target.id==='recallForm'){e.preventDefault();checkRecall(ui.recallText)}if(e.target.id==='aiCreateForm'){e.preventDefault();generateCollocations()}if(e.target.id==='journeyRecallForm'){e.preventDefault();journeyCheckRecall(document.getElementById('journeyRecallInput')?.value||'')}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeModal();document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')}if(e.key===' '&&!['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName)&&!ui.modal&&!ui.drawer&&ui.view==='flashcards'){e.preventDefault();if(ui.deck[ui.deckAt]){ui.flipped=!ui.flipped;render()}}if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-action="detail"]')){e.preventDefault();openDrawer(e.target.dataset.id)}if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('flashcard')&&ui.view==='flashcards'){e.preventDefault();ui.flipped=!ui.flipped;render()}});
   document.getElementById('addBtn').addEventListener('click',()=>entryModal());

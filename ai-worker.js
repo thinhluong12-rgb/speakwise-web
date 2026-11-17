@@ -54,8 +54,9 @@ export default {
          response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{
            method:'POST',headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
            body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],
-             generationConfig:{temperature:.55,responseMimeType:'application/json',maxOutputTokens:1200,
-               thinkingConfig:{thinkingLevel:model.includes('flash-lite')?'minimal':'low'}}}),
+             // Keep this lightweight and model-agnostic: older Gemini models reject thinkingLevel,
+             // while newer Flash-Lite models manage minimal thinking by default.
+             generationConfig:{responseMimeType:'application/json',maxOutputTokens:1400}}),
            signal:controller.signal
          });
          data=await response.json().catch(()=>({}));
@@ -72,7 +73,7 @@ export default {
          const status=response.status,detail=redact(data?.error?.message||'');
          lastError={status:status===404?502:status,error:'Gemini không thể tạo gợi ý ('+status+').',detail};
          attempts.push({model,status,elapsedMs:Date.now()-began});
-         if([400,401,403,429].includes(status))break;
+         if([401,403,429].includes(status))break;
        }
        if(i<models.length-1)await new Promise(resolve=>setTimeout(resolve,350));
      }
