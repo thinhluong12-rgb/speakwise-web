@@ -5,6 +5,7 @@ import { readFile } from 'node:fs/promises';
 const worker = await readFile(new URL('../ai-worker.js', import.meta.url), 'utf8');
 const browser = await readFile(new URL('../public/speaking-voice.js', import.meta.url), 'utf8');
 const migration = await readFile(new URL('../supabase/migrations/20261117094612_secure_voice_session_creation_and_daily_quota.sql', import.meta.url), 'utf8');
+const quotaMigration = await readFile(new URL('../supabase/migrations/20261117094951_voice_quota_trigger_and_invoker_rpc.sql', import.meta.url), 'utf8');
 
 test('Voice endpoints require a server-verified adult account', () => {
   assert.match(worker, /app_metadata\?\.adult_verified\s*===\s*true/);
@@ -61,4 +62,13 @@ test('adult verification precedes provider credential issuance and quota row cre
   const quotaRpc = worker.indexOf('/rest/v1/rpc/start_speakwise_voice_session');
   assert.ok(adultGate >= 0 && provider > adultGate);
   assert.ok(quotaRpc > provider);
+});
+
+test('quota ledger is enforced by a non-callable private trigger function', () => {
+  assert.match(quotaMigration, /create schema if not exists private/i);
+  assert.match(quotaMigration, /create table if not exists private\.speakwise_voice_daily_usage/i);
+  assert.match(quotaMigration, /security definer[\s\S]*set search_path = ''/i);
+  assert.match(quotaMigration, /before insert on public\.speakwise_voice_sessions/i);
+  assert.match(quotaMigration, /revoke all on function private\.enforce_speakwise_voice_daily_quota\(\) from public, anon, authenticated/i);
+  assert.match(quotaMigration, /new\.started_at := pg_catalog\.now\(\)/);
 });
