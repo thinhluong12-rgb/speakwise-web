@@ -51,12 +51,19 @@ export default {
        const timer=setTimeout(()=>controller.abort(),budget),began=Date.now();
        let response=null,data=null;
        try{
+         // Match the proven /evaluate request configuration. Gemini 3.x models
+         // use model-appropriate thinking levels; keep the same temperature and
+         // JSON response mode used by Writing/Speaking evaluation.
+         const isLite=model.includes('flash-lite');
+         const generationConfig={
+           temperature:0.2,
+           responseMimeType:'application/json',
+           maxOutputTokens:1400,
+           thinkingConfig:{thinkingLevel:isLite?'minimal':'low'}
+         };
          response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{
            method:'POST',headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
-           body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],
-             // Keep this lightweight and model-agnostic: older Gemini models reject thinkingLevel,
-             // while newer Flash-Lite models manage minimal thinking by default.
-             generationConfig:{responseMimeType:'application/json',maxOutputTokens:1400}}),
+           body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig}),
            signal:controller.signal
          });
          data=await response.json().catch(()=>({}));
