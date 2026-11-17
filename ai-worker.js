@@ -37,7 +37,7 @@ const workersAiJson=async(env,prompt,maxTokens=1800)=>{
  if(structured)return structured;
  const raw=typeof result==='string'?result:(typeof result?.response==='string'?result.response:result?.output_text||result?.text||'');
  if(!raw)throw new Error('Workers AI returned an unsupported response shape. '+describeAIError(result));
- const clean=String(raw).trim().replace(/^```(?:json)?\\s*/i,'').replace(/\\s*```$/,'');
+ const clean=String(raw).trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
  try{return JSON.parse(clean)}catch(parseError){throw new Error('Workers AI returned invalid JSON: '+describeAIError(parseError))}
 };
 const workersAiTranscribe=async(env,audioBase64)=>{
