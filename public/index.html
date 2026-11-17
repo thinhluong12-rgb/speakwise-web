@@ -1074,6 +1074,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       if(!response.ok){
         const diagnostics=[
           data.detail?'Chi tiết Gemini: '+data.detail:'',
+          data.fallbackError?'Chi tiết Workers AI: '+data.fallbackError:'',
+          data.workersAIDetail?'Chi tiết Workers AI: '+data.workersAIDetail:'',
           Array.isArray(data.attempts)&&data.attempts.length?'Model thử: '+data.attempts.map(a=>a.model+' ('+a.status+')').join(', '):''
         ].filter(Boolean).join(' · ');
         throw new Error([data.error||'AI chưa thể tạo gợi ý. Hãy thử lại.',diagnostics].filter(Boolean).join(' — '));
@@ -1099,7 +1101,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       else {if(ui.audioBlob.size>6*1024*1024)throw new Error('File ghi âm quá lớn (giới hạn 6MB).');payload.audioBase64=await blobAsBase64(ui.audioBlob);payload.mimeType=ui.audioBlob.type.split(';')[0]||'audio/webm'}
       const response=await fetch(aiEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload),signal:controller.signal});
       let data;try{data=await response.json()}catch(_){throw new Error('Dịch vụ AI trả về dữ liệu không hợp lệ.')}
-      if(!response.ok)throw new Error([data.error||'Lỗi kết nối AI ('+response.status+').',data.detail?'Chi tiết Gemini: '+data.detail:'',data.help||''].filter(Boolean).join('\n'));
+      if(!response.ok)throw new Error([data.error||'Lỗi kết nối AI ('+response.status+').',data.detail?'Chi tiết Gemini: '+data.detail:'',data.fallbackError?'Chi tiết Workers AI: '+data.fallbackError:'',data.workersAIDetail?'Chi tiết Workers AI: '+data.workersAIDetail:'',data.help||''].filter(Boolean).join('\n'));
       const result=data.result||data;
       if(!Number.isFinite(Number(result.score))||!result.dimensions||typeof result!=='object')throw new Error('Dữ liệu điểm đánh giá chưa đúng định dạng.');
       if(mode!==ui.sentenceMode||current.id!==ui.quiz?.answerId)return;
@@ -1427,7 +1429,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       const res=await fetch('/generate',{method:'POST',headers:{'content-type':'application/json'},
         body:JSON.stringify({topic:name,level,count,exclude:store.entries.filter(e=>topic(e.topicId)?.name.toLowerCase()===name.toLowerCase()).map(e=>e.phrase).slice(0,60)}),signal:ctrl.signal});
       const data=await res.json();
-      if(!res.ok)throw new Error([data.error,data.detail].filter(Boolean).join(' '));
+      if(!res.ok)throw new Error([data.error,data.detail,data.workersAIDetail].filter(Boolean).join(' '));
       const entries=Array.isArray(data.entries)?data.entries:[];
       if(!entries.length)throw new Error('Không có cụm từ phù hợp trong kết quả.');
       ui.aiDraft={entries,topicId:custom?'__new__':select.value,topicName:name,level};
