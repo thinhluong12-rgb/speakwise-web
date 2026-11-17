@@ -633,8 +633,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   let aiHealthState='checking';
   const aiStates={
     checking:['Đang kiểm tra kết nối AI…','Đang xác minh dịch vụ chấm câu của Speakwise.'],
-    ready:['Worker đã nhận Gemini API key','Kết nối tới Gemini chỉ được xác nhận sau khi chấm một câu thực tế.'],
-    missing:['AI chưa được kích hoạt','Cloudflare Worker đang hoạt động nhưng chưa nhận được GEMINI_API_KEY.'],
+    ready:['Worker AI đã sẵn sàng','Dịch vụ AI được cấu hình. Gợi ý và chấm câu sẽ tự dùng Workers AI khi Gemini bị giới hạn vị trí.'],
+    missing:['AI chưa được kích hoạt','Cloudflare Worker chưa có Gemini API key hoặc Workers AI binding.'],
     unavailable:['Chưa xác minh được kết nối AI','Không kiểm tra được dịch vụ chấm. Bạn có thể thử lại hoặc kiểm tra Cloudflare Worker.'],
     unconfigured:['Chưa cấu hình dịch vụ AI','Mở cài đặt nâng cao bên dưới để nhập địa chỉ dịch vụ chấm.']
   };
