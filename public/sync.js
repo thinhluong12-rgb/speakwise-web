@@ -15,35 +15,64 @@
   let host=$('speakwiseSyncHost');
   if(!host){host=document.createElement('div');host.id='speakwiseSyncHost';document.body.append(host);}
   host.dataset.required=required?'1':'0';
-  host.innerHTML='<div class="sw-sync-shade"></div><div class="sw-sync-modal" role="dialog" aria-modal="true" aria-labelledby="swSyncTitle"><button id="swSyncClose" type="button" class="sw-sync-close" aria-label="Đóng">×</button><h2 id="swSyncTitle">Đăng nhập SpeakWise</h2><p id="swSyncMessage"></p><div id="swSyncControls"></div><div class="sw-sync-login-note" id="swSyncNote">Đăng nhập để truy cập không gian học tập, Speaking Lab và đồng bộ tiến độ trên các thiết bị.</div><small>Thông tin đăng nhập được xử lý an toàn qua Supabase Authentication.</small></div>';
+  host.innerHTML='<div class="sw-sync-shade"></div><div class="sw-sync-modal" role="dialog" aria-modal="true" aria-labelledby="swSyncTitle"><button id="swSyncClose" type="button" class="sw-sync-close" aria-label="Đóng">×</button><h2 id="swSyncTitle">Tài khoản SpeakWise</h2><p id="swSyncMessage"></p><div id="swSyncControls"></div><div class="sw-sync-login-note">Đăng nhập hoặc tạo tài khoản để truy cập SpeakWise, sử dụng Speaking Lab và đồng bộ tiến độ học tập.</div><small>Tài khoản được xác thực và bảo vệ bởi Supabase Authentication.</small></div>';
   host.classList.add('open');
   const close=()=>{if(host.dataset.required!=='1')host.classList.remove('open')};
   host.querySelector('.sw-sync-shade').addEventListener('click',close);
   $('swSyncClose').addEventListener('click',close);
   const message=$('swSyncMessage'),body=$('swSyncControls');
   if(!cfg.supabaseUrl||!cfg.supabasePublishableKey){
-   message.textContent='Hệ thống đăng nhập chưa được cấu hình. Vui lòng liên hệ quản trị viên.';
+   message.textContent='Dịch vụ tài khoản chưa được cấu hình.';
    body.innerHTML='<p class="sw-sync-error">Thiếu Supabase URL hoặc publishable key trong config.js.</p>';
    $('swSyncClose').hidden=required;return;
   }
   if(!api){message.textContent='Đang kết nối dịch vụ tài khoản…';body.innerHTML='<p>Vui lòng chờ trong giây lát.</p>';return;}
   if(!user){
-   message.textContent='Nhập email để nhận liên kết đăng nhập an toàn. Sau khi xác thực, website sẽ tự động mở khóa.';
-   body.innerHTML='<label for="swSyncEmail">Địa chỉ email</label><input id="swSyncEmail" type="email" autocomplete="email" placeholder="name@example.com" required/><p class="sw-sync-error" id="swSyncError" hidden></p><button type="button" class="btn btn-primary sw-sync-submit" id="swSyncLogin">Gửi liên kết đăng nhập</button>';
    $('swSyncClose').hidden=required;
-   $('swSyncLogin').addEventListener('click',async()=>{
-    const email=$('swSyncEmail').value.trim(),button=$('swSyncLogin'),err=$('swSyncError');
-    err.hidden=true;err.textContent='';
-    if(!/^\S+@\S+\.\S+$/.test(email)){err.textContent='Vui lòng nhập địa chỉ email hợp lệ.';err.hidden=false;return;}
-    button.disabled=true;button.textContent='Đang gửi…';
-    try{
-     const {error}=await api.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
-     if(error)throw error;
-     message.textContent='Liên kết đăng nhập đã được gửi. Hãy mở email và bấm vào liên kết để xác thực. Website sẽ tự động mở sau khi xác thực thành công.';
-     body.innerHTML='<p class="sw-sync-login-note">Đang chờ xác thực email. Hãy kiểm tra cả thư mục Spam/Quảng cáo nếu chưa thấy thư.</p><button type="button" class="btn btn-muted sw-sync-submit" id="swSyncResend">Nhập email khác / gửi lại</button>';
-     $('swSyncResend').onclick=()=>showDialog(required);
-    }catch(e){err.textContent=e.message||'Không gửi được email đăng nhập. Vui lòng thử lại.';err.hidden=false;button.disabled=false;button.textContent='Gửi liên kết đăng nhập';}
-   });
+   const renderForm=(mode='login')=>{
+    const isRegister=mode==='register';
+    message.textContent=isRegister?'Tạo tài khoản SpeakWise bằng email và mật khẩu.':'Đăng nhập bằng email và mật khẩu đã đăng ký.';
+    body.innerHTML='<div class="sw-auth-tabs"><button type="button" id="swTabLogin" class="sw-auth-tab '+(!isRegister?'active':'')+'">Đăng nhập</button><button type="button" id="swTabRegister" class="sw-auth-tab '+(isRegister?'active':'')+'">Đăng ký</button></div><form id="swAuthForm" novalidate><label for="swAuthEmail">Email</label><input id="swAuthEmail" type="email" autocomplete="email" placeholder="name@example.com" required/><label for="swAuthPassword">Mật khẩu</label><input id="swAuthPassword" type="password" autocomplete="'+(isRegister?'new-password':'current-password')+'" placeholder="Nhập mật khẩu" required/><div id="swConfirmWrap" '+(isRegister?'':'hidden')+'><label for="swAuthConfirm">Xác nhận mật khẩu</label><input id="swAuthConfirm" type="password" autocomplete="new-password" placeholder="Nhập lại mật khẩu"/></div><p class="sw-sync-error" id="swAuthError" hidden></p><button type="submit" class="btn btn-primary sw-sync-submit" id="swAuthSubmit">'+(isRegister?'Tạo tài khoản':'Đăng nhập')+'</button></form><button type="button" class="sw-auth-forgot" id="swAuthForgot" '+(isRegister?'hidden':'')+'>Quên mật khẩu?</button>';
+    $('swTabLogin').onclick=()=>renderForm('login');
+    $('swTabRegister').onclick=()=>renderForm('register');
+    $('swAuthForgot').onclick=async()=>{
+     const email=$('swAuthEmail').value.trim(),err=$('swAuthError');err.hidden=true;
+     if(!/^\S+@\S+\.\S+$/.test(email)){err.textContent='Nhập email của bạn trước khi yêu cầu đặt lại mật khẩu.';err.hidden=false;return;}
+     try{
+      const {error}=await api.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+      if(error)throw error;
+      message.textContent='Đã gửi email đặt lại mật khẩu. Hãy kiểm tra hộp thư đến và thư mục Spam.';
+      body.innerHTML='<p class="sw-sync-login-note">Mở liên kết trong email để tiếp tục đặt lại mật khẩu.</p><button type="button" class="btn btn-muted sw-sync-submit" id="swAuthBack">Quay lại đăng nhập</button>';
+      $('swAuthBack').onclick=()=>renderForm('login');
+     }catch(e){err.textContent=e.message||'Không gửi được email đặt lại mật khẩu.';err.hidden=false;}
+    };
+    $('swAuthForm').onsubmit=async e=>{
+     e.preventDefault();
+     const email=$('swAuthEmail').value.trim(),password=$('swAuthPassword').value,confirm=$('swAuthConfirm')?.value||'';
+     const err=$('swAuthError'),button=$('swAuthSubmit');err.hidden=true;err.textContent='';
+     if(!/^\S+@\S+\.\S+$/.test(email)){err.textContent='Vui lòng nhập email hợp lệ.';err.hidden=false;return;}
+     if(password.length<8){err.textContent='Mật khẩu cần có ít nhất 8 ký tự.';err.hidden=false;return;}
+     if(isRegister&&password!==confirm){err.textContent='Mật khẩu xác nhận không khớp.';err.hidden=false;return;}
+     button.disabled=true;button.textContent=isRegister?'Đang tạo tài khoản…':'Đang đăng nhập…';
+     try{
+      if(isRegister){
+       const {data,error}=await api.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname}});
+       if(error)throw error;
+       if(data?.session){user=data.user;setGate(false);label('Tài khoản');host.classList.remove('open');await load();scheduleSave();}
+       else{
+        message.textContent='Tài khoản đã được tạo. Hãy xác nhận địa chỉ email qua liên kết chúng tôi vừa gửi trước khi đăng nhập.';
+        body.innerHTML='<p class="sw-sync-login-note">Kiểm tra hộp thư đến và thư mục Spam. Sau khi xác nhận email, quay lại đây để đăng nhập.</p><button type="button" class="btn btn-primary sw-sync-submit" id="swAuthReturn">Tôi đã xác nhận email – Đăng nhập</button>';
+        $('swAuthReturn').onclick=()=>renderForm('login');
+       }
+      }else{
+       const {data,error}=await api.auth.signInWithPassword({email,password});
+       if(error)throw error;
+       user=data.user;setGate(false);label('Tài khoản');host.classList.remove('open');await load();scheduleSave();
+      }
+     }catch(ex){err.textContent=ex.message||'Không thể xác thực tài khoản. Vui lòng thử lại.';err.hidden=false;button.disabled=false;button.textContent=isRegister?'Tạo tài khoản':'Đăng nhập';}
+    };
+   };
+   renderForm('login');
   }else{
    message.textContent='Bạn đã đăng nhập với '+(user.email||'tài khoản SpeakWise')+'.';
    body.innerHTML='<button type="button" class="btn btn-primary sw-sync-submit" id="swSyncNow">Đồng bộ ngay</button><button type="button" class="btn btn-muted sw-sync-submit" id="swSyncLogout">Đăng xuất</button>';
