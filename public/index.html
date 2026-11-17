@@ -642,7 +642,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
           '<small>'+['CN','T2','T3','T4','T5','T6','T7'][day.getDay()]+'</small></div>';
       }).join('')+'</div><p class="sw-small">Streak chỉ tính ngày có hoạt động học, không cộng khi mở website.</p></section>'+
       '<section class="sw-home-panel"><h3>Tiếp tục học</h3>'+
-      (last?'<p class="sw-small">Hoạt động gần nhất: '+esc(last.date||'')+'</p><button class="btn btn-primary" data-nav="'+(last.view==='memory'?'flashcards':last.view)+'">Tiếp tục '+
+      (last?'<p class="sw-small">Hoạt động gần nhất: '+esc(last.date||'')+'</p><button class="btn btn-primary" '+(last.view==='memory'?'data-action="studyTab" data-mode="memory"':'data-nav="'+last.view+'"')+'>Tiếp tục '+
         ({flashcards:'Flashcards',memory:'Ghi nhớ',apply:'Ứng dụng'}[last.view])+'</button>':
         '<p class="sw-small">Chưa có phiên học trước đó. Hãy bắt đầu phiên ngắn hôm nay.</p>')+
       '<div class="sw-shortcuts">'+(store.learningJourney?.ids?.length?'<button data-action="resumeJourney">'+icon('arrowRight')+' Tiếp tục Learning Journey</button>':'')+
@@ -1252,6 +1252,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function saveJSON(){const exportData={version:1,app:'Speaking Collocations Studio',exportedAt:new Date().toISOString(),topics:store.topics,entries:store.entries,progress:store.progress,deletedIds:store.deletedIds,sessions:store.sessions};const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`speakwise-backup-${localDay()}.json`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3000);toast('Đã xuất bản sao JSON.')}
   async function importJSON(file){if(!file)return;try{const raw=JSON.parse(await file.text());const payload=Array.isArray(raw)?{entries:raw}:raw;if(!payload||typeof payload!=='object'||!Array.isArray(payload.entries))throw new Error('Thiếu danh sách entries.');const incomingTopics=Array.isArray(payload.topics)?payload.topics.filter(t=>t.id&&t.name&&['life','ielts'].includes(t.section)):[];const allTopics=combine(store.topics,incomingTopics,'id');const ids=new Set(allTopics.map(t=>t.id));let count=0,updated=0;for(const x of payload.entries){if(!x||typeof x.phrase!=='string'||!x.phrase.trim()||typeof x.meaning!=='string'||typeof x.example!=='string'||!ids.has(x.topicId))continue;const id=typeof x.id==='string'&&x.id?x.id:'import-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);const item={id,topicId:x.topicId,phrase:x.phrase.trim(),ipa:String(x.ipa||''),meaning:x.meaning.trim(),example:x.example.trim(),note:String(x.note||''),source:String(x.source||'Cập nhật từ buổi luyện'),addedAt:String(x.addedAt||localDay())};const idx=store.entries.findIndex(e=>e.id===id);if(idx>=0){store.entries[idx]={...store.entries[idx],...item};updated++}else{store.entries.push(item);count++}store.deletedIds=store.deletedIds.filter(d=>d!==id)}store.topics=allTopics;if(Array.isArray(payload.deletedIds)){store.deletedIds=[...new Set([...store.deletedIds,...payload.deletedIds])];store.entries=store.entries.filter(x=>!store.deletedIds.includes(x.id));}if(payload.progress&&typeof payload.progress==='object'&&!Array.isArray(payload.progress))store.progress={...store.progress,...payload.progress};if(Array.isArray(payload.sessions))store.sessions=combine(store.sessions,payload.sessions,'id');save();ui.page=1;ui.deck=[];ui.quiz=null;render();toast(`Đã nhập ${count} cụm mới và cập nhật ${updated} cụm.`)}catch(error){toast('File JSON chưa hợp lệ: '+error.message)}finally{document.getElementById('importFile').value=''}}
   // Hash-based routes retain the current screen after a refresh and support Back/Forward.
+  let lastHandledHash=null;
   function routePath(){
     if(ui.view==='home'||ui.view==='mistakes')return '/home'+(ui.homeTab==='overview'?'':'/'+ui.homeTab);
     if(ui.view==='topics')return '/topics'+(ui.topic==='all'?'':'/'+encodeURIComponent(ui.topic));
@@ -1263,18 +1264,22 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   }
   function writeRoute(replace=false){
     const next='#'+routePath();
-    if(window.location.hash===next)return;
+    if(window.location.hash===next){lastHandledHash=next;return;}
     if(window.history?.pushState){
       if(replace)window.history.replaceState(null,'',next);
       else window.history.pushState(null,'',next);
     }else window.location.hash=next;
+    lastHandledHash=next;
   }
   function openHomeTab(name){
     ui.homeTab=['overview','mistakes','mastery'].includes(name)?name:'overview';
     goView('home');
   }
   function readRoute(){
-    const hash=String(window.location.hash||'').replace(/^#/,'');
+    const currentHash=String(window.location.hash||'');
+    if(lastHandledHash===currentHash)return;
+    lastHandledHash=currentHash;
+    const hash=currentHash.replace(/^#/,'');
     const raw=hash.startsWith('/')?hash:hash==='library'?'/topics':
       (hash==='quiz'||hash==='memory')?'/flashcards/memory/multiple':
       hash?'/'+hash:'/home';
@@ -1400,7 +1405,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   document.getElementById('importFile').addEventListener('change',e=>{importCollocationsFile(e.target.files?.[0]);e.target.value='';});
   document.getElementById('menuToggle').addEventListener('click',()=>{document.getElementById('sidebar').classList.add('open');document.getElementById('mobileShade').classList.add('open')});
   document.getElementById('mobileShade').addEventListener('click',()=>{document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')});
-  document.getElementById('brandLink').addEventListener('click',e=>{e.preventDefault();goView('home');ui.section='all';ui.topic='all';render()});
+  document.getElementById('brandLink').addEventListener('click',e=>{e.preventDefault();ui.homeTab='overview';ui.section='all';ui.topic='all';goView('home')});
   window.addEventListener('popstate',readRoute);
   window.addEventListener('hashchange',readRoute);
   readRoute();
