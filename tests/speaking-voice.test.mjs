@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const worker = await readFile(new URL('../ai-worker.js', import.meta.url), 'utf8');
 const browser = await readFile(new URL('../public/speaking-voice.js', import.meta.url), 'utf8');
-const migration = await readFile(new URL('../supabase/migrations/20261117101500_secure_voice_session_creation_and_daily_quota.sql', import.meta.url), 'utf8');
+const migration = await readFile(new URL('../supabase/migrations/20261117094612_secure_voice_session_creation_and_daily_quota.sql', import.meta.url), 'utf8');
 
 test('Voice endpoints require a server-verified adult account', () => {
   assert.match(worker, /app_metadata\?\.adult_verified\s*===\s*true/);
