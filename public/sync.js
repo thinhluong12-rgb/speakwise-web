@@ -81,6 +81,26 @@
    $('swSyncLogout').onclick=async()=>{const {error}=await api.auth.signOut();if(error){tell(error.message);return;}user=null;setGate(true);showDialog(true);label('Đăng nhập');tell('Bạn đã đăng xuất.');};
   }
  }
+ function showPasswordRecovery(){
+  let host=$('speakwiseSyncHost');
+  if(!host){host=document.createElement('div');host.id='speakwiseSyncHost';document.body.append(host);}
+  host.dataset.required='1';
+  host.innerHTML='<div class="sw-sync-shade"></div><div class="sw-sync-modal" role="dialog" aria-modal="true"><h2>Đặt mật khẩu mới</h2><p>Nhập mật khẩu mới cho tài khoản SpeakWise của bạn.</p><form id="swRecoveryForm"><label for="swNewPassword">Mật khẩu mới</label><input id="swNewPassword" type="password" autocomplete="new-password" required/><label for="swNewPasswordConfirm">Xác nhận mật khẩu</label><input id="swNewPasswordConfirm" type="password" autocomplete="new-password" required/><p class="sw-sync-error" id="swRecoveryError" hidden></p><button type="submit" class="btn btn-primary sw-sync-submit" id="swRecoverySubmit">Lưu mật khẩu mới</button></form></div>';
+  host.classList.add('open');
+  $('swRecoveryForm').onsubmit=async e=>{
+   e.preventDefault();
+   const p=$('swNewPassword').value,c=$('swNewPasswordConfirm').value,err=$('swRecoveryError'),btn=$('swRecoverySubmit');
+   err.hidden=true;
+   if(p.length<8){err.textContent='Mật khẩu cần có ít nhất 8 ký tự.';err.hidden=false;return;}
+   if(p!==c){err.textContent='Hai mật khẩu không khớp.';err.hidden=false;return;}
+   btn.disabled=true;btn.textContent='Đang cập nhật…';
+   try{
+    const {data,error}=await api.auth.updateUser({password:p});
+    if(error)throw error;
+    user=data.user;setGate(false);label('Tài khoản');host.classList.remove('open');tell('Đã cập nhật mật khẩu thành công.');await load();scheduleSave();
+   }catch(ex){err.textContent=ex.message||'Không cập nhật được mật khẩu.';err.hidden=false;btn.disabled=false;btn.textContent='Lưu mật khẩu mới';}
+  };
+ }
  function dialog(){showDialog(false)}
  async function load(){
   if(!enabled()||loading)return;loading=true;label('Tài khoản');
@@ -234,6 +254,7 @@
   else{label('Đăng nhập');showDialog(true);}
   api.auth.onAuthStateChange((event,session)=>{
    const was=user?.id;user=session?.user||null;
+   if(event==='PASSWORD_RECOVERY'&&user){setGate(true);showPasswordRecovery();return;}
    if(user){
     setGate(false);label('Tài khoản');
     if(user.id!==was){const host=$('speakwiseSyncHost');if(host)host.classList.remove('open');load().then(scheduleSave);}
