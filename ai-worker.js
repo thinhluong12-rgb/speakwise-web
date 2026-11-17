@@ -33,7 +33,7 @@ const workersAiJson=async(env,prompt,maxTokens=1800)=>{
  }
  const raw=typeof result==='string'?result:(typeof result?.response==='string'?result.response:result?.output_text||result?.text||'');
  if(!raw)throw new Error('Workers AI không trả về nội dung JSON. '+describeAIError(result));
- const clean=String(raw).trim().replace(/^```(?:json)?\\s*/i,'').replace(/\\s*```$/,'');
+ const clean=String(raw).trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
  try{return JSON.parse(clean)}catch(parseError){throw new Error('Workers AI trả về JSON không hợp lệ: '+describeAIError(parseError))}
 };
 const workersAiTranscribe=async(env,audioBase64)=>{
