@@ -100,12 +100,12 @@ const runVoiceAnalysis=async(env,prompt)=>{
 export default {
  async fetch(req,env) {
   const url=new URL(req.url),path=url.pathname;
-  if(!['/evaluate','/health','/generate','/hint','/conversation','/voice/session','/voice/analyze'].includes(path)){return env.ASSETS?.fetch(req)||new Response('Not found',{status:404})}
+  if(!['/evaluate','/health','/generate','/hint','/conversation','/voice/session','/voice/gemini-token','/voice/analyze'].includes(path)){return env.ASSETS?.fetch(req)||new Response('Not found',{status:404})}
   const allowed=String(env.ALLOWED_ORIGIN||url.origin).replace(/\/$/,'');
   const incoming=req.headers.get('origin');
   if(incoming&&incoming!==allowed)return new Response('Origin not allowed',{status:403});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:headers(allowed)});
-  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY||!!env.AI?.run,voiceReady:!!env.OPENAI_API_KEY&&!!env.SUPABASE_URL&&!!env.SUPABASE_PUBLISHABLE_KEY,providers:{gemini:!!env.GEMINI_API_KEY,workersAI:!!env.AI?.run},model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash',workersAIModel:WORKERS_AI_TEXT_MODEL},200,allowed);
+  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY||!!env.AI?.run,voiceReady:!!env.OPENAI_API_KEY&&!!env.SUPABASE_URL&&!!env.SUPABASE_PUBLISHABLE_KEY,geminiLiveReady:!!env.GEMINI_API_KEY&&!!env.SUPABASE_URL&&!!env.SUPABASE_PUBLISHABLE_KEY,providers:{openai:!!env.OPENAI_API_KEY,gemini:!!env.GEMINI_API_KEY,workersAI:!!env.AI?.run},model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash',workersAIModel:WORKERS_AI_TEXT_MODEL},200,allowed);
   if(!['/evaluate','/generate','/hint','/conversation','/voice/session','/voice/analyze'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
   if(path!=='/voice/session'&&!env.GEMINI_API_KEY&&!env.AI?.run)return reply({error:'AI chưa được cấu hình: cần GEMINI_API_KEY hoặc Workers AI binding.'},503,allowed);
   try{
@@ -115,6 +115,55 @@ export default {
    let b;try{b=JSON.parse(raw)}catch{return reply({error:'JSON không hợp lệ.'},400,allowed)}
 
 
+   if(path==='/voice/gemini-token'){
+     if(!env.GEMINI_API_KEY)return reply({error:'Gemini Live chưa được cấu hình. Thiếu GEMINI_API_KEY trên Worker.'},503,allowed);
+     if(!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return reply({error:'Voice Mode chưa được cấu hình xác thực Supabase.'},503,allowed);
+     const user=await verifySupabaseUser(req,env);
+     if(!user)return reply({error:'Bạn cần đăng nhập SpeakWise trước khi bắt đầu Voice Mode.'},401,allowed);
+     if(!user.adultVerified)return reply({error:'Voice Mode hiện chỉ dành cho tài khoản đã được xác minh đủ 18 tuổi.'},403,allowed);
+     const topic=limit(b.topic,120).trim()||'Daily conversation';
+     const level=['A2','B1','B2','C1'].includes(String(b.level||'').toUpperCase())?String(b.level).toUpperCase():'B1';
+     const goals=(Array.isArray(b.learningGoals)?b.learningGoals:[]).slice(0,5).map(x=>limit(x,120).trim()).filter(Boolean);
+     const mode=['conversation','ielts_part_1','ielts_part_2','ielts_part_3'].includes(b.mode)?b.mode:'conversation';
+     const model=env.GEMINI_LIVE_MODEL||'gemini-3.8-live';
+     const instructions='You are Coach AI in SpeakWise Speaking Lab. Have a natural, supportive but purposeful spoken English conversation. Topic: '+topic+'. Learner CEFR level: '+level+'. Session mode: '+mode+'. Learning goals: '+(goals.join('; ')||'develop ideas, speak clearly, and use natural English')+'. Ask one question at a time, listen carefully, respond concisely, and invite the learner to elaborate. Adapt vocabulary and question complexity to the stated level. Do not give an IELTS band score during the live conversation. Do not dominate the conversation or turn every reply into a lecture. Speak in clear, natural English.';
+     const now=Date.now();
+     const setup={
+       model:'models/'+model,
+       generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:env.GEMINI_LIVE_VOICE||'Aoede'}}}},
+       systemInstruction:{parts:[{text:instructions}]},
+       inputAudioTranscription:{},
+       outputAudioTranscription:{},
+       realtimeInputConfig:{automaticActivityDetection:{disabled:false},activityHandling:'START_OF_ACTIVITY_INTERRUPTS'}
+     };
+     const tokenResponse=await fetch('https://generativelanguage.googleapis.com/v1alpha/auth_tokens',{
+       method:'POST',
+       headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
+       body:JSON.stringify({authToken:{uses:1,expireTime:new Date(now+25*60*1000).toISOString(),newSessionExpireTime:new Date(now+60*1000).toISOString(),bidiGenerateContentSetup:setup}})
+     });
+     const tokenData=await tokenResponse.json().catch(()=>({}));
+     if(!tokenResponse.ok||!tokenData.name){
+       const detail=limit(tokenData?.error?.message||('Gemini token HTTP '+tokenResponse.status),220);
+       console.warn('SpeakWise Gemini Live token error',JSON.stringify({status:tokenResponse.status,code:tokenData?.error?.status||'unknown'}));
+       return reply({error:'Không thể tạo Gemini Live session token.',detail},502,allowed);
+     }
+     const sessionResponse=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/rpc/start_speakwise_voice_session',{
+       method:'POST',
+       headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:String(req.headers.get('authorization')||''),'content-type':'application/json'},
+       body:JSON.stringify({p_topic:topic,p_cefr_level:level,p_learning_goals:goals,p_session_mode:mode})
+     });
+     const created=await sessionResponse.json().catch(()=>null);
+     if(!sessionResponse.ok){
+       const message=String(created?.message||created?.details||'');
+       if(message.includes('DAILY_VOICE_LIMIT'))return reply({error:'Bạn đã đạt giới hạn 5 phiên Voice Mode trong ngày. Hãy quay lại vào ngày mai.'},429,allowed);
+       if(sessionResponse.status===403)return reply({error:'Voice Mode chỉ dành cho tài khoản đã được xác minh đủ 18 tuổi.'},403,allowed);
+       console.warn('SpeakWise Gemini Live session insert failed',JSON.stringify({status:sessionResponse.status,code:created?.code||'unknown'}));
+       return reply({error:'Không thể tạo bản ghi buổi học Voice Mode.'},503,allowed);
+     }
+     const createdSessionId=typeof created==='string'?created:(created?.id||created?.session_id);
+     if(!createdSessionId)return reply({error:'Database did not return a Voice session ID.'},502,allowed);
+     return reply({provider:'gemini',ephemeralToken:tokenData.name,expiresAt:tokenData.expireTime||null,sessionId:createdSessionId,model,websocketUrl:'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained'},200,allowed);
+   }
    if(path==='/voice/session'){
      if(!env.OPENAI_API_KEY)return reply({error:'Voice Mode chưa được cấu hình. Thiếu OPENAI_API_KEY trên Worker.'},503,allowed);
      if(!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return reply({error:'Voice Mode chưa được cấu hình xác thực Supabase.'},503,allowed);
