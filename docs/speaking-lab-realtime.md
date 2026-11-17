@@ -23,7 +23,7 @@ This feature adds a separate Voice Mode to the existing Speaking Lab. The curren
 - Session inserts are checked by a private database trigger. A private daily-usage ledger enforces five starts per UTC day even if a user deletes session history; clients cannot read or modify that ledger.
 - The user must explicitly consent in the Voice Room before microphone access.
 - The user can delete the most recently saved Voice session from the Voice Room. Deleting a session cascades to its turns.
-- A broader session-history management screen is not included in this MVP.
+- The Voice Room includes a recent-session list (latest 8) with transcript/report viewing and deletion of the selected session. A separate full-page history dashboard is not included.
 - Session rows are created by the Worker-backed database RPC only after adult verification; the browser cannot create a billable session row before this gate.
 
 ## Access control
