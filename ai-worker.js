@@ -51,9 +51,9 @@ const workersAiTranscribe=async(env,audioBase64)=>{
 };
 
 const verifySupabaseUser=async(req,env)=>{
- const token=String(req.headers.get('authorization')||'').replace(/^Bearer\\s+/i,'').trim();
+ const token=String(req.headers.get('authorization')||'').replace(/^Bearer\s+/i,'').trim();
  if(!token||!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return null;
- const response=await fetch(env.SUPABASE_URL.replace(/\\/$/,'')+'/auth/v1/user',{
+ const response=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/auth/v1/user',{
   headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+token}
  });
  if(!response.ok)return null;
@@ -84,7 +84,7 @@ const runVoiceAnalysis=async(env,prompt)=>{
    });
    const data=await response.json().catch(()=>({}));
    if(response.ok){
-    const raw=(data.candidates?.[0]?.content?.parts||[]).map(x=>x.text||'').join('').trim().replace(/^\\x60{3}(?:json)?\\s*/i,'').replace(/\\s*\\x60{3}$/,'');
+    const raw=(data.candidates?.[0]?.content?.parts||[]).map(x=>x.text||'').join('').trim().replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,'');
     try{return JSON.parse(raw)}catch(e){lastError='Gemini returned invalid JSON';}
    }else lastError=limit(data?.error?.message||('Gemini HTTP '+response.status),220);
   }catch(e){lastError=controller.signal.aborted?'Gemini analysis timed out':describeAIError(e)}
@@ -120,7 +120,7 @@ const runVoiceAnalysis=async(env,prompt)=>{
      const user=await verifySupabaseUser(req,env);
      if(!user)return reply({error:'Bạn cần đăng nhập SpeakWise trước khi bắt đầu Voice Mode.'},401,allowed);
      const dayStart=new Date();dayStart.setUTCHours(0,0,0,0);
-     const usageResponse=await fetch(env.SUPABASE_URL.replace(/\\/$/,'')+'/rest/v1/speakwise_voice_sessions?owner_id=eq.'+encodeURIComponent(user.id)+'&started_at=gte.'+encodeURIComponent(dayStart.toISOString())+'&select=id',{
+     const usageResponse=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/speakwise_voice_sessions?owner_id=eq.'+encodeURIComponent(user.id)+'&started_at=gte.'+encodeURIComponent(dayStart.toISOString())+'&select=id',{
        headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+String(req.headers.get('authorization')||'')}
      });
      const usageRows=await usageResponse.json().catch(()=>[]);
@@ -168,12 +168,12 @@ const runVoiceAnalysis=async(env,prompt)=>{
      if(!user)return reply({error:'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.'},401,allowed);
      const sessionId=String(b.sessionId||'');
      if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return reply({error:'Session ID không hợp lệ.'},400,allowed);
-     const sessionResponse=await fetch(env.SUPABASE_URL.replace(/\\/$/,'')+'/rest/v1/speakwise_voice_sessions?id=eq.'+encodeURIComponent(sessionId)+'&select=id,owner_id,topic,cefr_level',{
+     const sessionResponse=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/speakwise_voice_sessions?id=eq.'+encodeURIComponent(sessionId)+'&select=id,owner_id,topic,cefr_level',{
        headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+String(req.headers.get('authorization')||'')}
      });
      const sessions=await sessionResponse.json().catch(()=>[]);
      if(!sessionResponse.ok||!Array.isArray(sessions)||!sessions.length||sessions[0].owner_id!==user.id)return reply({error:'Không tìm thấy buổi học hoặc bạn không có quyền truy cập.'},404,allowed);
-     const turnsResponse=await fetch(env.SUPABASE_URL.replace(/\\/$/,'')+'/rest/v1/speakwise_voice_turns?session_id=eq.'+encodeURIComponent(sessionId)+'&select=turn_id,speaker,text,status,occurred_at&order=turn_index.asc&limit=100',{
+     const turnsResponse=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/speakwise_voice_turns?session_id=eq.'+encodeURIComponent(sessionId)+'&select=turn_id,speaker,text,status,occurred_at&order=turn_index.asc&limit=100',{
        headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+String(req.headers.get('authorization')||'')}
      });
      const storedTurns=await turnsResponse.json().catch(()=>[]);
