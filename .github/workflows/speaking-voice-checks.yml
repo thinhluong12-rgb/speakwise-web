@@ -6,6 +6,7 @@ on:
       - "ai-worker.js"
       - "public/speaking-voice.js"
       - "tests/speaking-voice.test.mjs"
+      - "supabase/migrations/**"
       - ".github/workflows/speaking-voice-checks.yml"
   push:
     branches:
