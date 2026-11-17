@@ -64,7 +64,7 @@
     const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});s.stream=stream;
     const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)throw Error('This browser does not support Web Audio.');
     s.audioContext=new AudioContextClass();await s.audioContext.resume();
-    const url=(credential.websocketUrl||'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1beta.GenerativeService.BidiGenerateContentConstrained')+'?access_token='+encodeURIComponent(credential.ephemeralToken);
+    const url=(credential.websocketUrl||'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained')+'?access_token='+encodeURIComponent(credential.ephemeralToken);
     const ws=new WebSocket(url);s.ws=ws;
     await new Promise((resolve,reject)=>{
       let settled=false;const timeout=setTimeout(()=>{if(!settled){settled=true;reject(Error('Gemini Live connection timed out.'))}},15000);
