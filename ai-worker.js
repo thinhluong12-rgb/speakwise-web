@@ -190,6 +190,14 @@ const runVoiceAnalysis=async(env,prompt)=>{
      try{
        const report=await runVoiceAnalysis(env,prompt);
        const criteria=report.criteria&&typeof report.criteria==='object'?report.criteria:{};
+       const cleanCriterion=c=>({
+         status:['observed','insufficient_evidence'].includes(c?.status)?c.status:'insufficient_evidence',
+         summary:limit(c?.summary,700),
+         evidence:(Array.isArray(c?.evidence)?c.evidence:[]).slice(0,3).map(x=>({quote:limit(x?.quote,300),interpretation:limit(x?.interpretation,350)})).filter(x=>x.quote),
+         confidence:['low','medium','high'].includes(c?.confidence)?c.confidence:'low',
+         next_action:limit(c?.next_action,350)
+       });
+
        report.criteria={
          fluency_coherence:cleanCriterion(criteria.fluency_coherence),
          lexical_resource:cleanCriterion(criteria.lexical_resource),
