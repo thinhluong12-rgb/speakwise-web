@@ -7,6 +7,7 @@ const headers=(origin)=>({'content-type':'application/json; charset=utf-8','acce
 const reply=(value,status,origin)=>new Response(JSON.stringify(value),{status,headers:headers(origin)});
 const limit=(x,n=1400)=>String(x||'').slice(0,n);
 const score=x=>Number.isFinite(Number(x))?Math.max(0,Math.min(100,Math.round(Number(x)))):null;
+const isGeminiLocationError=(status,message)=>status===400&&/FAILED_PRECONDITION|user location is not supported|location (is )?not supported|unsupported location/i.test(String(message||''));
 export default {
  async fetch(req,env) {
   const url=new URL(req.url),path=url.pathname;
@@ -71,7 +72,7 @@ export default {
          catch(_){lastError={status:502,error:'Gemini trả về gợi ý không đúng định dạng.'};attempts.push({model,status:'invalid-json',elapsedMs:Date.now()-began})}
        }else if(response&&!response.ok){
          const status=response.status,detail=redact(data?.error?.message||'');
-         const locationUnsupported=/user location is not supported|location (is )?not supported|not available in your location|unsupported location/i.test(detail);
+         const locationUnsupported=isGeminiLocationError(status,(data?.error?.status||'')+' '+detail)||/not available in your location/i.test(detail);
          const category=locationUnsupported?'GEMINI_LOCATION_UNSUPPORTED':
            status===401?'GEMINI_AUTH':status===403?'GEMINI_PERMISSION':
            status===429?'GEMINI_QUOTA':status===404?'GEMINI_MODEL_NOT_FOUND':
@@ -144,7 +145,14 @@ export default {
        let detail=limit(data?.error?.message||'',240);
        if(env.GEMINI_API_KEY)detail=detail.split(env.GEMINI_API_KEY).join('[REDACTED]');
        detail=detail.replace(/AIza[A-Za-z0-9_-]{20,}/g,'[REDACTED]');
-       return reply({error:'Gemini không tạo được collocations ('+response.status+').',detail},502,allowed);
+       const locationUnsupported=isGeminiLocationError(response.status,(data?.error?.status||'')+' '+detail);
+       if(locationUnsupported)console.warn('SpeakWise /generate location restriction',JSON.stringify({code:'GEMINI_LOCATION_UNSUPPORTED',upstreamStatus:response.status,model}));
+       return reply({
+         error:locationUnsupported?'Gemini hiện từ chối request do điều kiện vị trí của kết nối máy chủ.':'Gemini không tạo được collocations ('+response.status+').',
+         code:locationUnsupported?'GEMINI_LOCATION_UNSUPPORTED':'GEMINI_GENERATE_ERROR',
+         detail,
+         help:locationUnsupported?'Đây không phải lỗi nội dung collocations. Cần kiểm tra IP đầu ra và điều kiện truy cập Gemini với nhà cung cấp hạ tầng/Google.':'Kiểm tra cấu hình model, API key và quota.'
+       },locationUnsupported?503:502,allowed);
      }
      const raw=(data.candidates?.[0]?.content?.parts||[]).map(x=>x.text||'').join('');
      let parsed;try{parsed=JSON.parse(raw)}catch(_){return reply({error:'Gemini trả về JSON không hợp lệ, vui lòng thử lại.'},502,allowed)}
@@ -228,8 +236,9 @@ export default {
        const status=response.status,upstream=body?.error||{};
        const message=redact(upstream.message||'');
        const code=limit(upstream.status||'UNKNOWN',50).replace(/[^A-Z0-9_]/gi,'');
+       const locationUnsupported=isGeminiLocationError(status,code+' '+message);
        const reason={
-         400:'Yêu cầu chưa được Gemini chấp nhận; cần kiểm tra câu viết hoặc định dạng âm thanh.',
+         400:locationUnsupported?'Google từ chối request do điều kiện vị trí của kết nối máy chủ; không phải lỗi câu viết hay định dạng âm thanh.':'Yêu cầu chưa được Gemini chấp nhận; cần kiểm tra câu viết hoặc định dạng âm thanh.',
          401:'API key không hợp lệ hoặc không được cấp quyền.',
          403:'API key bị giới hạn hoặc Gemini không cho phép yêu cầu này.',
          404:'Model không hỗ trợ API hoặc chưa khả dụng với tài khoản.',
@@ -237,8 +246,9 @@ export default {
          500:'Máy chủ Gemini gặp lỗi tạm thời.',
          503:'Gemini đang quá tải hoặc tạm không khả dụng.'
        };
-       lastError={status,error:'Gemini trả về lỗi '+status+(code&&code!=='UNKNOWN'?' ('+code+')':'')+'.',
-         code:'GEMINI_'+status,detail:message,help:reason[status]||'Kiểm tra Google AI Studio.'};
+       lastError={status:locationUnsupported?503:status,
+         error:locationUnsupported?'Gemini tạm thời không thể xử lý yêu cầu do giới hạn vị trí kết nối.':'Gemini trả về lỗi '+status+(code&&code!=='UNKNOWN'?' ('+code+')':'')+'.',
+         code:locationUnsupported?'GEMINI_LOCATION_UNSUPPORTED':'GEMINI_'+status,detail:message,help:reason[status]||'Kiểm tra Google AI Studio.'};
        attempts.push({model:selected,status,elapsedMs:Date.now()-began});
        console.warn('Speakwise Gemini status',JSON.stringify({model:selected,status,elapsedMs:Date.now()-began}));
        // 400/401/403 are request/key errors. 429 may be a hard daily quota.
@@ -256,7 +266,7 @@ export default {
        modelsTried:attempts.map(a=>a.model),
        attempts,
        elapsedMs:Date.now()-totalStart
-     },error.status===504?504:502,allowed);
+     },error.status===504?504:error.status===503?503:502,allowed);
    }
    const text=(payload.candidates?.[0]?.content?.parts||[]).map(p=>p.text||'').join('').replace(/^\`\`\`(?:json)?/i,'').replace(/\`\`\`$/,'').trim();
    let o;try{o=JSON.parse(text)}catch{return reply({error:'Phản hồi Gemini không đúng định dạng JSON.'},502,allowed)}
