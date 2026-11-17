@@ -215,7 +215,8 @@ export default {
        return reply({error:'Không thể tạo báo cáo Speaking.',detail:limit(error.message,260)},503,allowed);
      }
    }
-\n   if(path==='/hint'){
+
+   if(path==='/hint'){
      const phrase=limit(b.phrase,180).trim(),meaning=limit(b.meaning,240).trim();
      const topic=limit(b.topic,100).trim(),example=limit(b.example,500).trim();
      if(phrase.length<3||!meaning||!phrase.includes(' '))
