@@ -121,17 +121,25 @@ export default {
      const user=await verifySupabaseUser(req,env);
      if(!user)return reply({error:'Bạn cần đăng nhập SpeakWise trước khi bắt đầu Voice Mode.'},401,allowed);
      if(!user.adultVerified)return reply({error:'Voice Mode hiện chỉ dành cho tài khoản đã được xác minh đủ 18 tuổi.'},403,allowed);
-     const dayStart=new Date();dayStart.setUTCHours(0,0,0,0);
-     const usageResponse=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/speakwise_voice_sessions?owner_id=eq.'+encodeURIComponent(user.id)+'&started_at=gte.'+encodeURIComponent(dayStart.toISOString())+'&select=id',{
-       headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+String(req.headers.get('authorization')||'')}
-     });
-     const usageRows=await usageResponse.json().catch(()=>[]);
-     if(!usageResponse.ok||!Array.isArray(usageRows))return reply({error:'Không thể kiểm tra hạn mức Voice Mode.'},503,allowed);
-     if(usageRows.length>=5)return reply({error:'Bạn đã đạt giới hạn 5 phiên Voice Mode trong ngày. Hãy quay lại vào ngày mai.'},429,allowed);
      const topic=limit(b.topic,120).trim()||'Daily conversation';
      const level=['A2','B1','B2','C1'].includes(String(b.level||'').toUpperCase())?String(b.level).toUpperCase():'B1';
      const goals=(Array.isArray(b.learningGoals)?b.learningGoals:[]).slice(0,5).map(x=>limit(x,120).trim()).filter(Boolean);
      const mode=['conversation','ielts_part_1','ielts_part_2','ielts_part_3'].includes(b.mode)?b.mode:'conversation';
+     const sessionResponse=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/rpc/start_speakwise_voice_session',{
+       method:'POST',
+       headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:String(req.headers.get('authorization')||''),'content-type':'application/json'},
+       body:JSON.stringify({p_topic:topic,p_cefr_level:level,p_learning_goals:goals,p_session_mode:mode})
+     });
+     const created=await sessionResponse.json().catch(()=>null);
+     if(!sessionResponse.ok){
+       const message=String(created?.message||created?.details||'');
+       if(message.includes('DAILY_VOICE_LIMIT'))return reply({error:'Bạn đã đạt giới hạn 5 phiên Voice Mode trong ngày. Hãy quay lại vào ngày mai.'},429,allowed);
+       if(sessionResponse.status===403)return reply({error:'Voice Mode chỉ dành cho tài khoản đã được xác minh đủ 18 tuổi.'},403,allowed);
+       console.warn('SpeakWise voice session insert failed',JSON.stringify({status:sessionResponse.status,code:created?.code||'unknown'}));
+       return reply({error:'Không thể tạo bản ghi buổi học Voice Mode.'},503,allowed);
+     }
+     const createdSessionId=typeof created==='string'?created:(created?.id||created?.session_id);
+     if(!createdSessionId)return reply({error:'Database did not return a Voice session ID.'},502,allowed);
      const model=env.OPENAI_REALTIME_MODEL||'gpt-realtime-1.5';
      const instructions='You are Coach AI in SpeakWise Speaking Lab. Have a natural, supportive but purposeful spoken English conversation. Topic: '+topic+'. Learner CEFR level: '+level+'. Session mode: '+mode+'. Learning goals: '+(goals.join('; ')||'develop ideas, speak clearly, and use natural English')+'. Ask one question at a time, listen carefully, respond concisely, and invite the learner to elaborate. Adapt vocabulary and question complexity to the stated level. Do not give an IELTS band score during the live conversation. Do not dominate the conversation or turn every reply into a lecture.';
      const safetyIdentifier=await sha256Hex('speakwise:'+user.id);
@@ -158,11 +166,15 @@ export default {
      const data=await response.json().catch(()=>({}));
      if(!response.ok){
        console.warn('SpeakWise Realtime session error',JSON.stringify({status:response.status,code:data?.error?.code||'unknown'}));
+       await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/speakwise_voice_sessions?id=eq.'+encodeURIComponent(createdSessionId),{
+         method:'PATCH',headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:String(req.headers.get('authorization')||''),'content-type':'application/json','prefer':'return=minimal'},
+         body:JSON.stringify({status:'failed',ended_at:new Date().toISOString()})
+       }).catch(()=>{});
        return reply({error:'Không thể tạo Realtime session.',detail:limit(data?.error?.message||('OpenAI HTTP '+response.status),220)},502,allowed);
      }
      const secret=data.value||data.client_secret?.value;
      if(!secret)return reply({error:'OpenAI không trả về client secret hợp lệ.'},502,allowed);
-     return reply({clientSecret:secret,expiresAt:data.expires_at||data.client_secret?.expires_at||null,sessionId:data.session?.id||null,model},200,allowed);
+     return reply({clientSecret:secret,expiresAt:data.expires_at||data.client_secret?.expires_at||null,sessionId:createdSessionId,model},200,allowed);
    }
    if(path==='/voice/analyze'){
      if(!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return reply({error:'Thiếu cấu hình Supabase.'},503,allowed);
