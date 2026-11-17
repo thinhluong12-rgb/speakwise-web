@@ -78,3 +78,10 @@ test('voice session insert RLS wraps auth claims in an initplan', () => {
   assert.match(rlsMigration, /\(select auth\.uid\(\)\)/);
   assert.match(rlsMigration, /\(\(select auth\.jwt\(\)\) -> 'app_metadata'/);
 });
+
+test('saved session history is loaded through owner-scoped Supabase queries', () => {
+  assert.match(browser, /data-swv="open-history"/);
+  assert.match(browser, /speakwise_voice_sessions'\)\.select\('id,topic,cefr_level,started_at,duration_seconds,analysis_status,analysis'\)/);
+  assert.match(browser, /speakwise_voice_turns'\)\.select\('turn_id,turn_index,speaker,text,status,occurred_at'\)/);
+  assert.match(browser, /\.limit\(8\)/);
+});
