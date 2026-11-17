@@ -67,6 +67,7 @@ wrangler.toml contains non-secret Supabase and model settings. The Realtime API 
 13. Verify the sixth daily session attempt is rejected, including concurrent requests; retain provider-side spend limits because the application quota is not a hard billing control.
 14. Verify a user without the server-controlled adult flag cannot create a session row through the RPC or receive a Realtime client secret.
 15. Verify every report evidence quote and correction source phrase exists in the saved learner transcript; unsupported quotes must be removed.
+16. Verify the latest 8 sessions appear in history, selecting one restores its transcript/report, and deleting it also deletes its turns without resetting the daily quota.
 
 ## Automated checks
 
