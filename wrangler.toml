@@ -10,4 +10,8 @@ run_worker_first = ["/evaluate", "/health"]
 [vars]
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_FALLBACK_MODEL = "gemini-3.8-flash"
-# GEMINI_API_KEY must be configured using Wrangler secrets.
+# Cloudflare Workers AI powers Learning Lab idea hints without a Gemini API key.
+[ai]
+binding = "AI"
+
+# GEMINI_API_KEY remains required for /evaluate and /generate.
