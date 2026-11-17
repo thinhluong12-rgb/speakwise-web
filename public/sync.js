@@ -32,7 +32,22 @@
    const renderForm=(mode='login')=>{
     const isRegister=mode==='register';
     message.textContent=isRegister?'Tạo tài khoản SpeakWise bằng email và mật khẩu.':'Đăng nhập bằng email và mật khẩu đã đăng ký.';
-    body.innerHTML='<div class="sw-auth-tabs"><button type="button" id="swTabLogin" class="sw-auth-tab '+(!isRegister?'active':'')+'">Đăng nhập</button><button type="button" id="swTabRegister" class="sw-auth-tab '+(isRegister?'active':'')+'">Đăng ký</button></div><form id="swAuthForm" novalidate><label for="swAuthEmail">Email</label><input id="swAuthEmail" type="email" autocomplete="email" placeholder="name@example.com" required/><label for="swAuthPassword">Mật khẩu</label><input id="swAuthPassword" type="password" autocomplete="'+(isRegister?'new-password':'current-password')+'" placeholder="Nhập mật khẩu" required/><div id="swConfirmWrap" '+(isRegister?'':'hidden')+'><label for="swAuthConfirm">Xác nhận mật khẩu</label><input id="swAuthConfirm" type="password" autocomplete="new-password" placeholder="Nhập lại mật khẩu"/></div><p class="sw-sync-error" id="swAuthError" hidden></p><button type="submit" class="btn btn-primary sw-sync-submit" id="swAuthSubmit">'+(isRegister?'Tạo tài khoản':'Đăng nhập')+'</button></form><button type="button" class="sw-auth-forgot" id="swAuthForgot" '+(isRegister?'hidden':'')+'>Quên mật khẩu?</button>';
+    body.innerHTML='<button type="button" id="swGoogleLogin" class="sw-google-btn"><span aria-hidden="true">G</span> Tiếp tục với Google</button><div class="sw-auth-divider"><span>hoặc tiếp tục bằng email</span></div><div class="sw-auth-tabs"><button type="button" id="swTabLogin" class="sw-auth-tab '+(!isRegister?'active':'')+'">Đăng nhập</button><button type="button" id="swTabRegister" class="sw-auth-tab '+(isRegister?'active':'')+'">Đăng ký</button></div><form id="swAuthForm" novalidate><label for="swAuthEmail">Email</label><input id="swAuthEmail" type="email" autocomplete="email" placeholder="name@example.com" required/><label for="swAuthPassword">Mật khẩu</label><input id="swAuthPassword" type="password" autocomplete="'+(isRegister?'new-password':'current-password')+'" placeholder="Nhập mật khẩu" required/><div id="swConfirmWrap" '+(isRegister?'':'hidden')+'><label for="swAuthConfirm">Xác nhận mật khẩu</label><input id="swAuthConfirm" type="password" autocomplete="new-password" placeholder="Nhập lại mật khẩu"/></div><p class="sw-sync-error" id="swAuthError" hidden></p><button type="submit" class="btn btn-primary sw-sync-submit" id="swAuthSubmit">'+(isRegister?'Tạo tài khoản':'Đăng nhập')+'</button></form><button type="button" class="sw-auth-forgot" id="swAuthForgot" '+(isRegister?'hidden':'')+'>Quên mật khẩu?</button>';
+    $('swGoogleLogin').onclick=async()=>{
+     const button=$('swGoogleLogin'),err=$('swAuthError');
+     button.disabled=true;button.textContent='Đang chuyển đến Google…';
+     if(err){err.hidden=true;err.textContent='';}
+     try{
+      const {error}=await api.auth.signInWithOAuth({
+       provider:'google',
+       options:{redirectTo:location.origin+location.pathname+location.search}
+      });
+      if(error)throw error;
+     }catch(ex){
+      if(err){err.textContent=ex.message||'Không thể đăng nhập bằng Google. Vui lòng thử lại.';err.hidden=false;}
+      button.disabled=false;button.innerHTML='<span aria-hidden="true">G</span> Tiếp tục với Google';
+     }
+    };
     $('swTabLogin').onclick=()=>renderForm('login');
     $('swTabRegister').onclick=()=>renderForm('register');
     $('swAuthForgot').onclick=async()=>{
