@@ -24,6 +24,7 @@ test('session creation is adult-gated and concurrency-safe in the database', () 
 test('browser uses WebRTC and never receives the standard API key', () => {
   assert.match(browser, /RTCPeerConnection/);
   assert.match(browser, /\/v1\/realtime\/calls/);
+  assert.match(browser, /google\.ai\.generativelanguage\.v1alpha\.GenerativeService\.BidiGenerateContentConstrained/);
   assert.doesNotMatch(browser, /OPENAI_API_KEY/);
 });
 
