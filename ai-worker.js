@@ -10,13 +10,13 @@ const score=x=>Number.isFinite(Number(x))?Math.max(0,Math.min(100,Math.round(Num
 export default {
  async fetch(req,env) {
   const url=new URL(req.url),path=url.pathname;
-  if(path!=='/evaluate'&&path!=='/health'&&path!=='/generate'){return env.ASSETS?.fetch(req)||new Response('Not found',{status:404})}
+  if(path!=='/evaluate'&&path!=='/health'&&path!=='/generate'&&path!=='/hint'){return env.ASSETS?.fetch(req)||new Response('Not found',{status:404})}
   const allowed=String(env.ALLOWED_ORIGIN||url.origin).replace(/\/$/,'');
   const incoming=req.headers.get('origin');
   if(incoming&&incoming!==allowed)return new Response('Origin not allowed',{status:403});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:headers(allowed)});
   if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY,model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash'},200,allowed);
-  if(!['/evaluate','/generate'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
+  if(!['/evaluate','/generate','/hint'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
   if(!env.GEMINI_API_KEY)return reply({error:'AI chưa được cấu hình: thiếu GEMINI_API_KEY.'},503,allowed);
   try{
    if(Number(req.headers.get('content-length')||0)>9e6)return reply({error:'Ghi âm quá lớn.'},413,allowed);
@@ -24,6 +24,67 @@ export default {
    if(raw.length>9e6)return reply({error:'Yêu cầu quá lớn.'},413,allowed);
    let b;try{b=JSON.parse(raw)}catch{return reply({error:'JSON không hợp lệ.'},400,allowed)}
 
+   if(path==='/hint'){
+     const phrase=limit(b.phrase,180).trim(),meaning=limit(b.meaning,240).trim();
+     const topic=limit(b.topic,100).trim(),example=limit(b.example,500).trim();
+     if(phrase.length<3||!meaning||!phrase.includes(' '))
+       return reply({error:'Thiếu collocation hoặc nghĩa để tạo gợi ý.'},400,allowed);
+     const prompt='You are a thoughtful English speaking and writing tutor. Help a learner generate their OWN idea for one sentence using the target collocation. '+
+       'Target: '+JSON.stringify({collocation:phrase,meaning,topic,referenceExample:example})+'. '+
+       'Return exactly 3 DISTINCT, realistic, easy-to-personalise contexts. Each context must be a short situation in Vietnamese, '+
+       '3 to 6 concise English keywords or short phrases (not full sentences), and one guiding question in Vietnamese that helps the learner recall a real experience or form a specific idea. '+
+       'The hints must fit the collocation meaning and show natural situations where it can be used. '+
+       'Do NOT write a complete sample sentence, do NOT write the learner answer, and do NOT merely repeat the reference example. '+
+       'Avoid generic prompts. Prefer varied everyday, study, work, travel or personal contexts when relevant. '+
+       'Return ONLY JSON: {hints:[{situation:string,keywords:string[],guidingQuestion:string}]} with exactly 3 items. Vietnamese for situation and guidingQuestion; English for keywords.';
+     const models=[...new Set([env.GEMINI_MODEL||'gemini-3.5-flash-lite',env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash'])].slice(0,2);
+     const started=Date.now(),attempts=[];let parsed=null,lastError=null,modelUsed=null;
+     const redact=x=>{
+       let v=limit(x,240);
+       if(env.GEMINI_API_KEY)v=v.split(env.GEMINI_API_KEY).join('[REDACTED]');
+       return v.replace(/AIza[A-Za-z0-9_-]{20,}/g,'[REDACTED]').replace(/\s+/g,' ').trim();
+     };
+     for(let i=0;i<models.length;i++){
+       const model=models[i];
+       if(!/^[a-zA-Z0-9._-]+$/.test(model))return reply({error:'Model AI chưa hợp lệ.'},503,allowed);
+       const controller=new AbortController(),budget=i===0?14000:14000;
+       const timer=setTimeout(()=>controller.abort(),budget),began=Date.now();
+       let response=null,data=null;
+       try{
+         response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{
+           method:'POST',headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
+           body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],
+             generationConfig:{temperature:.55,responseMimeType:'application/json',maxOutputTokens:1200,
+               thinkingConfig:{thinkingLevel:model.includes('flash-lite')?'minimal':'low'}}}),
+           signal:controller.signal
+         });
+         data=await response.json().catch(()=>({}));
+       }catch(err){
+         lastError={status:controller.signal.aborted?504:502,error:controller.signal.aborted?
+           'AI tạo gợi ý quá thời gian chờ.':'Không thể kết nối Gemini để tạo gợi ý.',detail:redact(err?.message||'')};
+         attempts.push({model,status:controller.signal.aborted?'timeout':'network',elapsedMs:Date.now()-began});
+       }finally{clearTimeout(timer)}
+       if(response?.ok&&data){
+         const raw=(data.candidates?.[0]?.content?.parts||[]).map(x=>x.text||'').join('').replace(/^\`\`\`(?:json)?/i,'').replace(/\`\`\`$/,'').trim();
+         try{parsed=JSON.parse(raw);modelUsed=model;attempts.push({model,status:200,elapsedMs:Date.now()-began});break}
+         catch(_){lastError={status:502,error:'Gemini trả về gợi ý không đúng định dạng.'};attempts.push({model,status:'invalid-json',elapsedMs:Date.now()-began})}
+       }else if(response&&!response.ok){
+         const status=response.status,detail=redact(data?.error?.message||'');
+         lastError={status:status===404?502:status,error:'Gemini không thể tạo gợi ý ('+status+').',detail};
+         attempts.push({model,status,elapsedMs:Date.now()-began});
+         if([400,401,403,429].includes(status))break;
+       }
+       if(i<models.length-1)await new Promise(resolve=>setTimeout(resolve,350));
+     }
+     if(!parsed)return reply({...lastError,attempts,elapsedMs:Date.now()-started},lastError?.status===504?504:502,allowed);
+     const hints=(Array.isArray(parsed.hints)?parsed.hints:[]).slice(0,3).map(h=>({
+       situation:limit(h?.situation,220).trim(),
+       keywords:(Array.isArray(h?.keywords)?h.keywords:[]).slice(0,6).map(x=>limit(x,70).trim()).filter(Boolean),
+       guidingQuestion:limit(h?.guidingQuestion,260).trim()
+     })).filter(h=>h.situation&&h.keywords.length>=2&&h.guidingQuestion);
+     if(!hints.length)return reply({error:'Gemini chưa tạo được gợi ý phù hợp. Hãy thử lại.'},502,allowed);
+     return reply({hints,modelUsed,elapsedMs:Date.now()-started},200,allowed);
+   }
    if(path==='/generate'){
      const topic=String(b.topic||'').trim().slice(0,90);
      const level=String(b.level||'').toUpperCase();
