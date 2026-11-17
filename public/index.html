@@ -370,6 +370,72 @@ body{font-size:15px;line-height:1.62}
 .sw-topic-report-track{height:8px;background:#e0efe7;border-radius:22px;overflow:hidden}
 .sw-topic-report-track i{display:block;height:100%;background:#279c86;border-radius:22px}
 
+
+/* Speakwise v4.5 — balanced typography, full-width study workspace and nested learning tabs */
+body{font-size:15.5px;line-height:1.65}
+.nav-item{font-size:14px;padding:14px 12px}
+.breadcrumb{font-size:14px}.btn{font-size:14px}
+.page-content{max-width:none;padding:26px clamp(16px,3vw,40px) 44px}
+.sw-study-single{width:100%;max-width:none!important;margin:0!important}
+.sw-study-single .practice-panel,.sw-study-panel{width:100%;max-width:none!important}
+.sw-study-panel{padding:clamp(18px,3vw,32px)!important}
+.practice-panel,.sw-home-panel,.library-card,.sw-home-subpanel,.sw-today{font-size:15px}
+.sw-flashcard{min-height:345px!important;padding:45px clamp(25px,4vw,65px)!important}
+.sw-flashcard .sw-card-phrase{font-size:clamp(36px,4.4vw,56px)!important}
+.sw-flashcard .sw-card-meaning{font-size:clamp(27px,3.2vw,40px)!important}
+.sw-card-example{font-size:clamp(19px,2.2vw,24px)!important}
+.sw-prompt h2{font-size:clamp(29px,3.2vw,44px)!important}
+.sw-prompt .target-meaning{font-size:19px}
+.flashcard-hint,.sw-progress strong,.sw-progress span{font-size:14px}
+.quiz-option,.quiz-result,.sw-journey-meaning,.recall-input input,.sentence-input-area textarea{font-size:17px}
+.sw-skill-tabs button,.quiz-switch button,.rating-btn{font-size:16px}
+.sw-journey-card>p,.sw-home-panel>p,.sw-home-panel .sw-small,.sw-today p,.sw-today-actions>span{font-size:14px}
+.sw-stats .sw-stat p,.sw-topic-report p,.sw-mistake>p{font-size:14px}
+input,textarea,select{font-size:16px}
+.sw-home-hub{width:100%}
+.sw-home-tabbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:7px;margin-bottom:20px;border:1px solid #dcebe5;border-radius:14px;background:#fff}
+.sw-home-tabbar button{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-width:115px;padding:11px 15px;background:transparent;border:0;border-radius:10px;font-size:14px;font-weight:750;color:#687f78;cursor:pointer}
+.sw-home-tabbar button svg{width:17px;height:17px}
+.sw-home-tabbar button.active{background:#e5f5ed;color:#176f5f}
+.sw-home-subpanel{padding:clamp(18px,3vw,30px);border:1px solid #dcebe4;border-radius:18px;background:#fff}
+.sw-subpanel-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:20px}
+.sw-subpanel-header h2{font-size:23px;color:#1c6055;margin:0 0 4px}
+.sw-subpanel-header p{font-size:14px;color:#6e8a7e;margin:0}
+.sw-mastery-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:20px 0 28px}
+.sw-mastery-kpis article{display:grid;gap:5px;padding:18px;border-radius:13px;border:1px solid #e1ece6;background:#f7fcf9}
+.sw-mastery-kpis svg{width:19px;height:19px;color:#288b78}.sw-mastery-kpis strong{font-size:28px;color:#215c51}
+.sw-mastery-kpis small{font-size:13px;color:#67847a}
+.sw-mastery-list h3{font-size:18px;color:#215d52}
+.sw-mastery-topic{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(70px,1fr) 55px 18px;gap:14px;align-items:center;border:1px solid #e3ece7;background:white;border-radius:12px;text-align:left;padding:13px 15px;width:100%;margin-bottom:8px;cursor:pointer}
+.sw-mastery-topic:hover{border-color:#91cdbb;background:#f8fcfa}
+.sw-mastery-topic-text strong{display:block;font-size:15px;color:#255a51}
+.sw-mastery-topic-text small{display:block;font-size:12px;color:#749287}
+.sw-mastery-meter{height:8px;border-radius:16px;background:#e0eee6;overflow:hidden}
+.sw-mastery-meter i{display:block;height:100%;background:#249a80;border-radius:16px}
+.sw-mastery-topic>b{font-size:14px;color:#397868;text-align:right}
+.sw-mastery-topic>svg{height:17px;width:17px;color:#699285}
+.sw-mistakes-summary{font-size:13px;color:#66867b}
+.sw-study-tabs{display:flex;gap:10px;background:#f2f8f5;border-radius:12px;padding:6px;margin-bottom:16px}
+.sw-study-tabs button{border:0;background:transparent;border-radius:9px;padding:13px 20px;font-size:16px;font-weight:750;color:#607c72;display:flex;align-items:center;gap:9px;cursor:pointer}
+.sw-study-tabs button svg{width:18px;height:18px}
+.sw-study-tabs button.active{background:#fff;color:#1e7965;box-shadow:0 2px 10px #165f4517}
+.sw-study-panel>.practice-filters{margin-bottom:22px}
+@media(max-width:850px){
+ .sw-mobile-nav{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .sw-study-panel{padding:18px!important}
+ .sw-mastery-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .page-content{padding:20px 15px 96px}
+}
+@media(max-width:520px){
+ .sw-home-tabbar{gap:3px;flex-wrap:nowrap;padding:5px}
+ .sw-home-tabbar button{font-size:12px;min-width:0;flex:1;padding:10px 5px;gap:5px}
+ .sw-home-tabbar button svg{width:15px;height:15px}
+ .sw-mastery-topic{grid-template-columns:minmax(0,1fr) 58px 15px;gap:7px}
+ .sw-mastery-meter{display:none}
+ .sw-study-tabs button{flex:1;justify-content:center;padding:12px 7px;font-size:14px}
+ .sw-flashcard{min-height:295px!important;padding:40px 17px!important}
+}
+
 </style>
 </head>
 <body>
@@ -382,10 +448,9 @@ body{font-size:15px;line-height:1.62}
       <div class="sidebar-menu-label">KHÔNG GIAN HỌC</div>
       <nav class="main-nav" aria-label="Điều hướng chính">
         <button class="nav-item active" data-nav="home"><span data-icon="layout-grid"></span> Trang chủ</button>
-        <button class="nav-item" data-nav="flashcards"><span data-icon="layers"></span> Flashcards</button>
-        <button class="nav-item" data-nav="memory"><span data-icon="brain"></span> Ghi nhớ</button>
-        <button class="nav-item" data-nav="apply"><span data-icon="pen"></span> Ứng dụng</button>
         <button class="nav-item" data-nav="topics"><span data-icon="bookOpen"></span> Topic Collocations</button>
+        <button class="nav-item" data-nav="flashcards"><span data-icon="layers"></span> Flashcards · Ghi nhớ</button>
+        <button class="nav-item" data-nav="apply"><span data-icon="pen"></span> Ứng dụng</button>
       </nav>
     </aside>
 
@@ -403,10 +468,9 @@ body{font-size:15px;line-height:1.62}
       <div class="page-content" id="pageContent"></div>
       <nav class="sw-mobile-nav" aria-label="Điều hướng học tập">
         <button type="button" data-nav="home"><span data-icon="layout-grid"></span><span>Trang chủ</span></button>
-        <button type="button" data-nav="flashcards"><span data-icon="layers"></span><span>Thẻ</span></button>
-        <button type="button" data-nav="memory"><span data-icon="brain"></span><span>Ghi nhớ</span></button>
-        <button type="button" data-nav="apply"><span data-icon="pen"></span><span>Ứng dụng</span></button>
         <button type="button" data-nav="topics"><span data-icon="bookOpen"></span><span>Topics</span></button>
+        <button type="button" data-nav="flashcards"><span data-icon="layers"></span><span>Học & nhớ</span></button>
+        <button type="button" data-nav="apply"><span data-icon="pen"></span><span>Ứng dụng</span></button>
       </nav>
 
     </main>
@@ -429,6 +493,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   const STORAGE_KEY = 'speakwise-collocation-studio-v1';
   const seed = window.SPEAKING_SEED || {topics:[],entries:[],sessions:[]};
   const iconPaths = {
+    chart:'<path d="M4 20V12M10 20V5M16 20v-9M22 20V8"/><path d="M2 21h20"/>',
     target:'<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
     notebook:'<rect x="5" y="3" width="15" height="18" rx="2"/><path d="M9 3v18M12 8h5M12 12h5M12 16h4"/>',
     flame:'<path d="M12 22c4.3 0 7-3.3 7-7.2 0-2.2-1.3-4.2-2.7-5.5-.2 2.2-1.1 3.5-2.3 4-1.7-3-1.7-6-1-10.3C9.2 5.4 6 8.7 6 13.5c0 1.7.5 3.1 1.6 4.3A5.6 5.6 0 0 0 12 22Z"/><path d="M12 22c-2 0-3.2-1.4-3.2-3.3 0-1.5.8-3.2 2.3-4.3.1 1.4.7 2 1.1 2.5.6-.5 1-1.4 1.1-2.1 1.4 1.6 1.8 2.7 1.8 4A3.1 3.1 0 0 1 12 22Z"/>',
@@ -473,7 +538,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   const saved=readSaved();
   const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[],mistakes:Array.isArray(saved.mistakes)?saved.mistakes:[],deletedMistakeIds:Array.isArray(saved.deletedMistakeIds)?saved.deletedMistakeIds:[],settings:{dailyGoal:8,...(saved.settings||{})},lastPractice:saved.lastPractice||null,learningJourney:saved.learningJourney||null};
   store.entries=store.entries.filter(e=>!store.deletedIds.includes(e.id));
-  const ui={view:'home',section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false,focusMode:false,journey:null,journeyReturn:'home'};
+  const ui={view:'home',homeTab:'overview',section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false,focusMode:false,journey:null,journeyReturn:'home'};
   const GROUPS_KEY='speakwise-collapsed-groups-v3';
   let collapsedGroups={life:false,ielts:false};
   try { const remembered=JSON.parse(localStorage.getItem(GROUPS_KEY)||'{}'); collapsedGroups={life:!!remembered.life,ielts:!!remembered.ielts}; } catch (_) {}
@@ -527,12 +592,11 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   const toastHost=document.getElementById('toastHost');
   function toast(message){const el=document.createElement('div');el.className='toast';el.innerHTML=icon('checkCircle')+`<span>${esc(message)}</span>`;toastHost.append(el);setTimeout(()=>el.remove(),4100)}
   function renderIcons(){document.querySelectorAll('[data-icon]').forEach(el=>{el.innerHTML=icon(el.dataset.icon)})}
-  function sidebar(){document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===(ui.view==='journey'?'home':ui.view==='mistakes'?'apply':ui.view)))}
-  const navNames={home:'Trang chủ',flashcards:'Flashcards',memory:'Ghi nhớ',apply:'Ứng dụng',topics:'Topic Collocations',journey:'Learning Journey',mistakes:'My Mistakes'};
-  function header(){document.getElementById('breadcrumb').innerHTML='<strong>'+navNames[ui.view]+'</strong>'}
-  function intro(title,subtitle='',eyebrow=''){
-    return '<div class="intro"><div>'+(eyebrow?'<div class="eyebrow">'+esc(eyebrow)+'</div>':'')+'<h1 class="page-title">'+esc(title)+'</h1>'+(subtitle?'<p class="page-subtitle">'+esc(subtitle)+'</p>':'')+'</div></div>';
-  }
+  function sidebar(){document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===(ui.view==='journey'?'home':ui.view==='mistakes'?'home':ui.view==='memory'?'flashcards':ui.view)))}
+  const navNames={home:'Trang chủ',flashcards:'Flashcards · Ghi nhớ',memory:'Flashcards · Ghi nhớ',apply:'Ứng dụng',topics:'Topic Collocations',journey:'Learning Journey',mistakes:'Trang chủ'};
+  function header(){const suffix=ui.view==='home'&&ui.homeTab!=='overview'?' / '+(ui.homeTab==='mistakes'?'My Mistakes':'Mastery'):'';document.getElementById('breadcrumb').innerHTML='<strong>'+(navNames[ui.view]||'Trang chủ')+suffix+'</strong>'}
+  // Navigation and in-panel headings provide the section context; do not repeat it above every card.
+  function intro(){return ''}
   function hero(){return `<div class="hero"><div class="hero-content"><div class="hero-tag">${icon('sparkles')} YOUR SPEAKING LIBRARY</div><h2>Học theo ngữ cảnh.<br/>Diễn đạt tự nhiên hơn mỗi ngày.</h2><p>Lưu lại những collocations đã luyện, xem ví dụ thực tế và ôn lại đúng lúc — không cần học thuộc cả bài mẫu.</p></div><div class="hero-art" aria-hidden="true"><div class="hero-circle-one"></div><div class="hero-circle-two"></div><div class="hero-card-float"><strong>learn in context ✦</strong><p>Speak clearly & confidently</p></div><div class="hero-chip">make it stick ↗</div></div></div>`}
   function stats(){const configs=[['Tổng cụm từ',store.entries.length,'bookOpen',''],['Đã ôn ít nhất 1 lần',reviewedCount(),'checkCircle','blue'],['Đã vững',masteredCount(),'sparkles','amber'],['Đến hạn ôn',dueCount(),'clock','rose']];return `<div class="stats">${configs.map(([l,v,ic,cl])=>`<div class="stat"><div><div class="stat-label">${l}</div><div class="stat-value">${v}</div></div><div class="stat-icon ${cl}">${icon(ic)}</div></div>`).join('')}</div>`}
   const stageNames={new:'Mới',recognised:'Đã nhận diện',recalled:'Đã nhớ lại',applied:'Vận dụng vững'};
@@ -549,7 +613,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     let count=0;for(;dates.has(localDay(day))&&count<10000;day.setDate(day.getDate()-1))count++;
     return count;
   }
-  function home(){
+  function overviewPage(){
     const dates=Array.from({length:7},(_,i)=>{const d=new Date();d.setDate(d.getDate()-6+i);return localDay(d)});
     const counts=Object.fromEntries(dates.map(d=>[d,0]));
     for(const r of store.reviewEvents||[])if(Object.hasOwn(counts,r.date))counts[r.date]++;
@@ -578,15 +642,47 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
           '<small>'+['CN','T2','T3','T4','T5','T6','T7'][day.getDay()]+'</small></div>';
       }).join('')+'</div><p class="sw-small">Streak chỉ tính ngày có hoạt động học, không cộng khi mở website.</p></section>'+
       '<section class="sw-home-panel"><h3>Tiếp tục học</h3>'+
-      (last?'<p class="sw-small">Hoạt động gần nhất: '+esc(last.date||'')+'</p><button class="btn btn-primary" data-nav="'+last.view+'">Tiếp tục '+
+      (last?'<p class="sw-small">Hoạt động gần nhất: '+esc(last.date||'')+'</p><button class="btn btn-primary" '+(last.view==='memory'?'data-action="studyTab" data-mode="memory"':'data-nav="'+last.view+'"')+'>Tiếp tục '+
         ({flashcards:'Flashcards',memory:'Ghi nhớ',apply:'Ứng dụng'}[last.view])+'</button>':
         '<p class="sw-small">Chưa có phiên học trước đó. Hãy bắt đầu phiên ngắn hôm nay.</p>')+
       '<div class="sw-shortcuts">'+(store.learningJourney?.ids?.length?'<button data-action="resumeJourney">'+icon('arrowRight')+' Tiếp tục Learning Journey</button>':'')+
       '<button data-action="openMistakes">'+icon('notebook')+' My Mistakes <strong>'+pending+'</strong></button>'+
-      '<button data-nav="topics">'+icon('layers')+' Topic Mastery '+icon('arrowRight')+'</button></div>'+
+      '<button data-action="openMastery">'+icon('layers')+' Topic Mastery '+icon('arrowRight')+'</button></div>'+
       '<h4>Cần củng cố</h4>'+(weak.length?weak.map(e=>'<button class="sw-weak" data-action="detail" data-id="'+esc(e.id)+'"><b>'+
       esc(e.phrase)+'</b><small>'+esc(e.meaning)+'</small></button>').join(''):'<p class="sw-small">Chưa có cụm nào được xếp vào nhóm cần củng cố.</p>')+
       '</section></div>';
+  }
+  function homeTabBar(){
+    const tabs=[['overview','Tổng quan','layout-grid'],['mistakes','My Mistakes','notebook'],['mastery','Mastery','chart']];
+    return '<nav class="sw-home-tabbar" role="tablist" aria-label="Các tab Trang chủ">'+tabs.map(([id,label,svg])=>
+      '<button type="button" role="tab" aria-selected="'+(ui.homeTab===id)+'" class="'+(ui.homeTab===id?'active':'')+
+      '" data-action="homeTab" data-tab="'+id+'">'+icon(svg)+' '+label+'</button>').join('')+'</nav>';
+  }
+  function masteryPage(){
+    const total=store.entries.length,all=store.entries.map(e=>stageOf(e.id)),nums={
+      new:all.filter(x=>x==='new').length,recognised:all.filter(x=>x==='recognised').length,
+      recalled:all.filter(x=>x==='recalled').length,applied:all.filter(x=>x==='applied').length};
+    const stages=[['new','Mới','circle'],['recognised','Đã nhận diện','bookOpen'],
+      ['recalled','Đã nhớ lại','brain'],['applied','Vận dụng vững','checkCircle']];
+    return '<section class="sw-home-subpanel"><div class="sw-subpanel-header"><div><h2>Collocation Mastery</h2>'+
+      '<p>Thành thạo cần bằng chứng nhớ lại và vận dụng đúng qua nhiều ngày, không chỉ lật thẻ.</p></div>'+
+      '<button type="button" class="btn btn-muted" data-nav="topics">Xem tất cả topics '+icon('arrowRight')+'</button></div>'+
+      '<div class="sw-mastery-kpis">'+stages.map(([key,label,svg])=>
+        '<article><span>'+icon(svg)+'</span><strong>'+nums[key]+'</strong><small>'+label+'</small></article>').join('')+'</div>'+
+      '<div class="sw-mastery-list"><h3>Tiến độ theo chủ đề</h3>'+
+      store.topics.map(t=>{
+        const m=topicMetrics(t.id),pct=m.total?Math.round(m.applied/m.total*100):0;
+        return '<button type="button" data-action="masteryTopic" data-topic="'+esc(t.id)+'" class="sw-mastery-topic">'+
+          '<span class="sw-mastery-topic-text"><strong>'+esc(t.name)+'</strong><small>'+m.recalled+' nhớ lại · '+m.applied+'/'+m.total+' vận dụng vững</small></span>'+
+          '<span class="sw-mastery-meter"><i style="width:'+pct+'%"></i></span><b>'+pct+'%</b>'+icon('arrowRight')+'</button>';
+      }).join('')+'</div></section>';
+  }
+  function home(){
+    const tab=['overview','mistakes','mastery'].includes(ui.homeTab)?ui.homeTab:'overview';
+    return '<div class="sw-home-hub">'+homeTabBar()+
+      (tab==='mistakes'?'<section class="sw-home-subpanel"><div class="sw-subpanel-header"><div>'+
+      '<h2>My Mistakes</h2><p>Lỗi đã lưu từ AI feedback để bạn luyện lại và kiểm chứng.</p></div></div>'+
+      mistakesPage()+'</section>':tab==='mastery'?masteryPage():overviewPage())+'</div>';
   }
   function filterEntries(){return store.entries.filter(e=>{
     const t=topic(e.topicId);if(!t)return false;
@@ -605,7 +701,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       '<span><strong>'+m.recalled+'</strong> Đã nhớ lại</span><span><strong>'+m.applied+'</strong> Vận dụng vững</span></div>'+
       '<div class="sw-topic-report-track" role="progressbar" aria-label="Vận dụng vững theo topic" aria-valuemin="0" aria-valuemax="'+m.total+'" aria-valuenow="'+m.applied+'"><i style="width:'+percent+'%"></i></div></div>';
   }
-  function library(){return intro('Topic Collocations','Chọn một chủ đề để xem và luyện các collocations bên dưới.')+topicGrid()+
+  function library(){return topicGrid()+
       (ui.topic==='all'?'':topicReport(ui.topic)+'<section class="library-card" id="selectedTopicCollocations"><div class="library-toolbar"><div class="library-toolbar-title"><strong>'+
       (ui.topic==='all'?'All Collocations':esc(topic(ui.topic)?.name||'All Collocations'))+
       '</strong><small><span id="filteredCount">'+filterEntries().length+'</span> collocations</small></div><div class="filters"><div class="search-box">'+icon('search')+
@@ -621,7 +717,9 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function practiceHeader(view){
     const names={flashcards:['Flashcards','Học cách dùng cụm từ qua nghĩa và ví dụ.'],memory:['Ghi nhớ','Kiểm tra khả năng nhớ lại bằng trắc nghiệm hoặc gõ từ.'],apply:['Ứng dụng','Dùng collocations để luyện viết, luyện nói và nhận AI feedback.']};
     const [name,desc]=names[view]||names.memory;
-    return intro(name,desc)+'<div class="practice-filters">'+
+    return (view==='flashcards'||view==='memory'?'<div class="sw-study-tabs" role="tablist" aria-label="Chế độ học Flashcards"><button role="tab" type="button" data-action="studyTab" data-mode="cards" aria-selected="'+(view==='flashcards')+'" class="'+(view==='flashcards'?'active':'')+'">'+icon('layers')+' Học thẻ</button>'+
+      '<button role="tab" type="button" data-action="studyTab" data-mode="memory" aria-selected="'+(view==='memory')+'" class="'+(view==='memory'?'active':'')+'">'+icon('brain')+' Ghi nhớ</button></div>':'')+
+      '<div class="practice-filters">'+
       '<select class="filter-select" aria-label="Chọn topic" id="practiceTopic">'+scopeOptions(ui.quizTopic)+'</select>'+
       '<select class="filter-select" aria-label="Chọn bộ từ" id="practiceScope"><option value="all" '+(ui.quizScope==='all'?'selected':'')+'>Tất cả cụm từ</option>'+
       '<option value="due" '+(ui.quizScope==='due'?'selected':'')+'>Đến hạn ôn ('+dueCount()+')</option>'+
@@ -652,8 +750,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
         '<button class="rating-btn good" data-action="rate" data-rating="good">Nhớ được</button>'+
         '<button class="rating-btn easy" data-action="rate" data-rating="easy">Rất dễ</button>':
         '<button class="btn btn-primary" data-action="flip">'+icon('refresh')+' Xem nghĩa & ví dụ</button>')+'</div>';
-    return practiceHeader('flashcards')+'<div class="practice-layout sw-study-single"><section class="practice-panel sw-study-panel">'+
-      swProgress(Math.min(ui.deckAt,ui.deck.length),ui.deck.length)+card+'</section></div>';
+    return '<div class="practice-layout sw-study-single"><section class="practice-panel sw-study-panel">'+
+      practiceHeader('flashcards')+swProgress(Math.min(ui.deckAt,ui.deck.length),ui.deck.length)+card+'</section></div>';
   }
   function shuffle(a){let copy=[...a];for(let i=copy.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[copy[i],copy[j]]=[copy[j],copy[i]]}return copy}
   function nextQuiz(){cleanupAudio();ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceText='';ui.sentenceBusy=false;let pool=studyPool();let available=pool.filter(e=>!ui.quizSeen.includes(e.id));if(!available.length){ui.quizSeen=[];available=pool}if(!available.length){ui.quiz=null;return}const answer=available[Math.floor(Math.random()*available.length)];ui.quizSeen.push(answer.id);let distractors=shuffle(pool.filter(e=>e.id!==answer.id));if(distractors.length<3)distractors=shuffle([...distractors,...store.entries.filter(e=>e.id!==answer.id&&!distractors.includes(e))]);ui.quiz={answerId:answer.id,options:shuffle([answer,...distractors.slice(0,3)].map(e=>({id:e.id,phrase:e.phrase}))),selected:null,isCorrect:null};ui.showAnswer=false;ui.recallText=''}
@@ -754,8 +852,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
         else body+='<p class="recall-hint">Chưa nhớ? <button type="button" data-action="revealQuiz">Hiện đáp án</button></p>';
       }
     }
-    return practiceHeader(sentence?'apply':'memory')+'<div class="practice-layout sw-study-single"><section class="practice-panel sw-study-panel">'+
-      swProgress(Math.min(ui.quizSeen.length,studyPool().length),studyPool().length)+body+'</section></div>';
+    return '<div class="practice-layout sw-study-single"><section class="practice-panel sw-study-panel">'+
+      practiceHeader(sentence?'apply':'memory')+swProgress(Math.min(ui.quizSeen.length,studyPool().length),studyPool().length)+body+'</section></div>';
   }
   function cleanupAudio(){
     if(recordingTimer){clearTimeout(recordingTimer);recordingTimer=null}
@@ -822,9 +920,9 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceText='';
     ui.quiz={answerId:valid[0],options:[],selected:null,isCorrect:null};
     store.learningJourney={ids:valid,at:0,step:'learn',createdAt:new Date().toISOString()};
-    save();render();window.scrollTo({top:0,behavior:'smooth'});
+    save();render();writeRoute();window.scrollTo({top:0,behavior:'smooth'});
   }
-  function resumeJourney(){
+  function resumeJourney({fromRoute=false}={}){
     const saved=store.learningJourney;
     if(!saved?.ids?.length){toast('Chưa có phiên học để tiếp tục.');return}
     const ids=saved.ids.filter(id=>store.entries.some(e=>e.id===id));
@@ -834,7 +932,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     ui.journey={ids,at,step,recall:saved.recall||null,startedAt:Date.now()};
     ui.view='journey';ui.focusMode=true;ui.sentenceMode='write';ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceText='';
     ui.quiz={answerId:ids[at],options:[],selected:null,isCorrect:null};
-    render();window.scrollTo({top:0,behavior:'smooth'});
+    render();if(!fromRoute)writeRoute();window.scrollTo({top:0,behavior:'smooth'});
   }
   function syncJourneyProgress(){
     if(!ui.journey)return;
@@ -955,7 +1053,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function mistakesPage(){
     const all=(store.mistakes||[]).filter(m=>!store.deletedMistakeIds.includes(m.id)),open=all.filter(m=>m.status!=='resolved');
     return intro('My Mistakes','Sổ lỗi được lưu theo lựa chọn của bạn, không tự động coi mọi góp ý AI là đúng.')+
-      '<div class="sw-mistakes-header"><strong>'+open.length+' lỗi cần luyện lại</strong><button class="btn btn-muted" data-nav="apply">Trở lại Ứng dụng</button></div>'+
+      '<div class="sw-mistakes-header"><strong>'+open.length+' lỗi cần luyện lại</strong><span class="sw-mistakes-summary">Chọn Try Again để tạo một câu mới</span></div>'+
       (all.length?all.map(m=>{
         const e=store.entries.find(x=>x.id===m.entryId),resolved=m.status==='resolved';
         return '<article class="sw-mistake '+(resolved?'resolved':'')+'"><strong>'+esc(e?.phrase||'Collocation đã xoá')+' · '+(m.mode==='speak'?'Speaking':'Writing')+'</strong>'+
@@ -971,7 +1069,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function retryMistake(id){
     const m=store.mistakes.find(x=>x.id===id),entry=store.entries.find(x=>x.id===m?.entryId);
     if(!entry){toast('Không tìm thấy collocation.');return}
-    ui.quizTopic=entry.topicId;ui.quizScope='all';goView('apply');ui.sentenceMode=m.mode==='speak'?'speak':'write';
+    ui.quizTopic=entry.topicId;ui.quizScope='all';ui.sentenceMode=m.mode==='speak'?'speak':'write';goView('apply');
     ui.quiz={answerId:entry.id,options:[],selected:null,isCorrect:null};ui.sentenceText='';render();
     toast('Hãy tạo một câu mới để kiểm chứng khả năng vận dụng.');
   }
@@ -1153,22 +1251,86 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   }
   function saveJSON(){const exportData={version:1,app:'Speaking Collocations Studio',exportedAt:new Date().toISOString(),topics:store.topics,entries:store.entries,progress:store.progress,deletedIds:store.deletedIds,sessions:store.sessions};const blob=new Blob([JSON.stringify(exportData,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`speakwise-backup-${localDay()}.json`;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),3000);toast('Đã xuất bản sao JSON.')}
   async function importJSON(file){if(!file)return;try{const raw=JSON.parse(await file.text());const payload=Array.isArray(raw)?{entries:raw}:raw;if(!payload||typeof payload!=='object'||!Array.isArray(payload.entries))throw new Error('Thiếu danh sách entries.');const incomingTopics=Array.isArray(payload.topics)?payload.topics.filter(t=>t.id&&t.name&&['life','ielts'].includes(t.section)):[];const allTopics=combine(store.topics,incomingTopics,'id');const ids=new Set(allTopics.map(t=>t.id));let count=0,updated=0;for(const x of payload.entries){if(!x||typeof x.phrase!=='string'||!x.phrase.trim()||typeof x.meaning!=='string'||typeof x.example!=='string'||!ids.has(x.topicId))continue;const id=typeof x.id==='string'&&x.id?x.id:'import-'+Date.now()+'-'+Math.random().toString(36).slice(2,9);const item={id,topicId:x.topicId,phrase:x.phrase.trim(),ipa:String(x.ipa||''),meaning:x.meaning.trim(),example:x.example.trim(),note:String(x.note||''),source:String(x.source||'Cập nhật từ buổi luyện'),addedAt:String(x.addedAt||localDay())};const idx=store.entries.findIndex(e=>e.id===id);if(idx>=0){store.entries[idx]={...store.entries[idx],...item};updated++}else{store.entries.push(item);count++}store.deletedIds=store.deletedIds.filter(d=>d!==id)}store.topics=allTopics;if(Array.isArray(payload.deletedIds)){store.deletedIds=[...new Set([...store.deletedIds,...payload.deletedIds])];store.entries=store.entries.filter(x=>!store.deletedIds.includes(x.id));}if(payload.progress&&typeof payload.progress==='object'&&!Array.isArray(payload.progress))store.progress={...store.progress,...payload.progress};if(Array.isArray(payload.sessions))store.sessions=combine(store.sessions,payload.sessions,'id');save();ui.page=1;ui.deck=[];ui.quiz=null;render();toast(`Đã nhập ${count} cụm mới và cập nhật ${updated} cụm.`)}catch(error){toast('File JSON chưa hợp lệ: '+error.message)}finally{document.getElementById('importFile').value=''}}
-  function goView(v){if(['apply','journey'].includes(ui.view)&&v!==ui.view)cleanupAudio();ui.focusMode=false;ui.view=v;
+  // Hash-based routes retain the current screen after a refresh and support Back/Forward.
+  let lastHandledHash=null;
+  function routePath(){
+    if(ui.view==='home'||ui.view==='mistakes')return '/home'+(ui.homeTab==='overview'?'':'/'+ui.homeTab);
+    if(ui.view==='topics')return '/topics'+(ui.topic==='all'?'':'/'+encodeURIComponent(ui.topic));
+    if(ui.view==='flashcards')return '/flashcards';
+    if(ui.view==='memory')return '/flashcards/memory/'+(ui.quizMode==='recall'?'recall':'multiple');
+    if(ui.view==='apply')return '/apply/'+(ui.sentenceMode==='speak'?'speak':'write');
+    if(ui.view==='journey')return '/journey';
+    return '/home';
+  }
+  function writeRoute(replace=false){
+    const next='#'+routePath();
+    if(window.location.hash===next){lastHandledHash=next;return;}
+    if(window.history?.pushState){
+      if(replace)window.history.replaceState(null,'',next);
+      else window.history.pushState(null,'',next);
+    }else window.location.hash=next;
+    lastHandledHash=next;
+  }
+  function openHomeTab(name){
+    ui.homeTab=['overview','mistakes','mastery'].includes(name)?name:'overview';
+    goView('home');
+  }
+  function readRoute(){
+    const currentHash=String(window.location.hash||'');
+    if(lastHandledHash===currentHash)return;
+    lastHandledHash=currentHash;
+    const hash=currentHash.replace(/^#/,'');
+    const raw=hash.startsWith('/')?hash:hash==='library'?'/topics':
+      (hash==='quiz'||hash==='memory')?'/flashcards/memory/multiple':
+      hash?'/'+hash:'/home';
+    const parts=raw.split('/').filter(Boolean);
+    const main=parts[0];
+    if(main==='home'){
+      ui.homeTab=['mistakes','mastery'].includes(parts[1])?parts[1]:'overview';
+      goView('home',{fromRoute:true});
+    }else if(main==='topics'){
+      let id='all';if(parts[1]){try{id=decodeURIComponent(parts[1])}catch(_){}}
+      ui.topic=store.topics.some(t=>t.id===id)?id:'all';
+      ui.section='all';ui.page=1;ui.filter='all';ui.query='';
+      goView('topics',{fromRoute:true});
+    }else if(main==='flashcards'){
+      if(parts[1]==='memory'){
+        ui.quizMode=parts[2]==='recall'?'recall':'multiple';
+        goView('memory',{fromRoute:true});
+      }else goView('flashcards',{fromRoute:true});
+    }else if(main==='apply'){
+      ui.sentenceMode=parts[1]==='speak'?'speak':'write';
+      goView('apply',{fromRoute:true});
+    }else if(main==='journey'&&store.learningJourney?.ids?.length){
+      resumeJourney({fromRoute:true});
+    }else{
+      ui.homeTab='overview';
+      goView('home',{fromRoute:true});
+    }
+    writeRoute(true);
+  }
+  function goView(v,{fromRoute=false}={}){if(['apply','journey'].includes(ui.view)&&v!==ui.view)cleanupAudio();ui.focusMode=false;ui.view=v;
     if(v==='flashcards')makeDeck();
     if(v==='memory'||v==='apply'){ui.quizMode=v==='apply'?'sentence':ui.quizMode==='sentence'?'multiple':ui.quizMode;ui.quizSeen=[];ui.quiz=null;ui.quizCorrect=0;ui.quizTotal=0}
     if(['flashcards','memory','apply'].includes(v)){store.lastPractice={view:v,date:localDay()};save()}
-    render();document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open');
+    render();if(!fromRoute)writeRoute();
+    document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open');
     window.scrollTo({top:0,behavior:'smooth'})}
   document.addEventListener('click',e=>{
     const nav=e.target.closest('[data-nav]');if(nav){
       if(nav.dataset.nav==='topics'){ui.topic='all';ui.section='all';ui.filter='all';ui.query='';ui.page=1}
+      if(nav.dataset.nav==='home')ui.homeTab='overview';
       goView(nav.dataset.nav);return
     }
     const el=e.target.closest('[data-action]');if(!el)return;
     const {action,id,section,topic:topicId,page,rating,mode}=el.dataset;
     switch(action){
       case 'saveMistake':saveCurrentMistake();break;
-      case 'openMistakes':goView('mistakes');break;
+      case 'openMistakes':openHomeTab('mistakes');break;
+      case 'openMastery':openHomeTab('mastery');break;
+      case 'homeTab':openHomeTab(el.dataset.tab);break;
+      case 'masteryTopic':ui.topic=topicId;ui.section='all';goView('topics');break;
+      case 'studyTab':goView(mode==='memory'?'memory':'flashcards');break;
       case 'retryMistake':retryMistake(id);break;
       case 'deleteMistake':{
         if(confirm('Xoá vĩnh viễn lỗi đã lưu này?')){
@@ -1187,14 +1349,14 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'downloadTemplate':downloadTemplate();break;
       case 'saveAIDrafts':saveAIDrafts();break;
       case 'toggleGroup':collapsedGroups[section]=!collapsedGroups[section];try{localStorage.setItem(GROUPS_KEY,JSON.stringify(collapsedGroups))}catch(_){}sidebar();break;
-      case 'section':ui.section=section;ui.topic='all';ui.page=1;ui.view='library';render();break;
+      case 'section':ui.section='all';ui.topic='all';ui.page=1;ui.view='topics';render();writeRoute();break;
       case 'topic':{
         const wasSelected=ui.topic===topicId&&ui.view==='topics';
-        ui.topic=wasSelected?'all':topicId;ui.section='all';ui.filter='all';ui.query='';ui.page=1;ui.view='topics';render();
+        ui.topic=wasSelected?'all':topicId;ui.section='all';ui.filter='all';ui.query='';ui.page=1;ui.view='topics';render();writeRoute();
         if(!wasSelected)document.getElementById('selectedTopicCollocations')?.scrollIntoView({behavior:'smooth',block:'start'});
         break;
       }
-      case 'clearFilters':ui.section='all';ui.topic='all';ui.filter='all';ui.query='';ui.page=1;render();break;
+      case 'clearFilters':ui.section='all';ui.topic='all';ui.filter='all';ui.query='';ui.page=1;render();writeRoute();break;
       case 'page':ui.page=Number(page);libraryTable();break;
       case 'detail':openDrawer(id);break;
       case 'closeDrawer':closeDrawer();break;
@@ -1206,8 +1368,8 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'flip':ui.flipped=!ui.flipped;render();break;
       case 'rate':review(ui.deck[ui.deckAt],rating,{action:'flashcard',correct:rating!=='hard'});ui.deckAt++;ui.flipped=false;render();break;
       case 'restart':cleanupAudio();ui.view==='flashcards'?makeDeck():(ui.quiz=null,ui.quizSeen=[],ui.quizCorrect=0,ui.quizTotal=0);render();break;
-      case 'quizMode':cleanupAudio();ui.quizMode=mode;ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;ui.sentenceResult=null;ui.sentenceError=null;render();break;
-      case 'sentenceMode':cleanupAudio();ui.sentenceMode=mode;ui.sentenceResult=null;ui.sentenceError=null;render();break;
+      case 'quizMode':cleanupAudio();ui.quizMode=mode;ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;ui.sentenceResult=null;ui.sentenceError=null;render();writeRoute();break;
+      case 'sentenceMode':cleanupAudio();ui.sentenceMode=mode;ui.sentenceResult=null;ui.sentenceError=null;render();writeRoute();break;
       case 'saveEndpoint':{
         const value=document.getElementById('aiEndpoint')?.value.trim()||'';
         if(value){
@@ -1243,8 +1405,10 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   document.getElementById('importFile').addEventListener('change',e=>{importCollocationsFile(e.target.files?.[0]);e.target.value='';});
   document.getElementById('menuToggle').addEventListener('click',()=>{document.getElementById('sidebar').classList.add('open');document.getElementById('mobileShade').classList.add('open')});
   document.getElementById('mobileShade').addEventListener('click',()=>{document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')});
-  document.getElementById('brandLink').addEventListener('click',e=>{e.preventDefault();goView('home');ui.section='all';ui.topic='all';render()});
-  render();
+  document.getElementById('brandLink').addEventListener('click',e=>{e.preventDefault();ui.homeTab='overview';ui.section='all';ui.topic='all';goView('home')});
+  window.addEventListener('popstate',readRoute);
+  window.addEventListener('hashchange',readRoute);
+  readRoute();
   verifyAiService();
   window.SpeakwiseSync?.init({store,render,toast});
 })();
