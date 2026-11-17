@@ -594,7 +594,7 @@ input,textarea,select{font-size:16px}
         <button class="nav-item active" data-nav="home"><span data-icon="layout-grid"></span> Trang chủ</button>
         <button class="nav-item" data-nav="topics"><span data-icon="bookOpen"></span> Topic Collocations</button>
         <button class="nav-item" data-nav="flashcards"><span data-icon="layers"></span> Learning Lab</button>
-        <button class="nav-item" data-nav="speakingLab"><span data-icon="messages-square"></span> Speaking Lab</button>
+        <button class="nav-item" data-nav="speakingLab"><span data-icon="users"></span> Speaking Lab</button>
       </nav>
     </aside>
 
@@ -614,7 +614,7 @@ input,textarea,select{font-size:16px}
         <button type="button" data-nav="home"><span data-icon="layout-grid"></span><span>Trang chủ</span></button>
         <button type="button" data-nav="topics"><span data-icon="bookOpen"></span><span>Topics</span></button>
         <button type="button" data-nav="flashcards"><span data-icon="layers"></span><span>Learning Lab</span></button>
-        <button type="button" data-nav="speakingLab"><span data-icon="messages-square"></span><span>Speaking Lab</span></button>
+        <button type="button" data-nav="speakingLab"><span data-icon="users"></span><span>Speaking Lab</span></button>
       </nav>
 
     </main>
@@ -1395,7 +1395,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       );
       return '<div class="sw-sl-message '+(user?'user':'assistant')+'"><div class="sw-sl-message-avatar">'+icon(user?'user':'bot')+'</div><div><div class="sw-sl-bubble">'+esc(m.content)+'</div>'+feedbackHtml+'</div></div>';
     }).join('');
-    const empty=!messages.length?'<div class="sw-sl-empty"><div class="sw-sl-avatar">'+icon('messages-square')+'</div><h3>Let’s start a conversation!</h3><p>Choose a topic and tell me about your experience. I’ll keep the conversation going and help you use collocations naturally — without forcing difficult expressions into every sentence.</p></div>':'';
+    const empty=!messages.length?'<div class="sw-sl-empty"><div class="sw-sl-avatar">'+icon('users')+'</div><h3>Let’s start a conversation!</h3><p>Choose a topic and tell me about your experience. I’ll keep the conversation going and help you use collocations naturally — without forcing difficult expressions into every sentence.</p></div>':'';
     const busy=ui.speakingBusy?'<div class="sw-sl-typing">SpeakWise is thinking…</div>':'';
     const error=ui.speakingError?'<div class="sw-sl-error">'+esc(ui.speakingError)+'</div>':'';
     const audioReady=!!ui.audioBlob&&!ui.recording;
@@ -1403,16 +1403,16 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       '<div class="sw-sl-toolbar"><div class="sw-sl-field"><label for="slTopic">Conversation topic</label><select id="slTopic">'+speakingTopics.map(x=>'<option value="'+esc(x)+'" '+(ui.speakingTopic===x?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select></div>'+
       '<div class="sw-sl-field"><label for="slLevel">Your speaking level</label><select id="slLevel">'+['A2','B1','B2','C1'].map(x=>'<option value="'+x+'" '+(ui.speakingLevel===x?'selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
       '<div style="display:flex;align-items:end"><button class="btn btn-muted" type="button" data-action="newSpeakingChat">'+icon('refresh')+' New conversation</button></div></div>'+
-      '<div class="sw-sl-shell"><section class="sw-sl-chat"><div class="sw-sl-chat-top"><div class="sw-sl-coach"><div class="sw-sl-avatar">'+icon('bot')+'</div><div><strong>SpeakWise AI Coach</strong><small>Conversation partner · Collocation coach</small></div></div><button class="icon-button" type="button" title="Đọc câu trả lời mới nhất" aria-label="Đọc câu trả lời mới nhất" data-action="speakReply">'+icon('volume2')+'</button></div>'+
+      '<div class="sw-sl-shell"><section class="sw-sl-chat"><div class="sw-sl-chat-top"><div class="sw-sl-coach"><div class="sw-sl-avatar">'+icon('brain')+'</div><div><strong>SpeakWise AI Coach</strong><small>Conversation partner · Collocation coach</small></div></div><button class="icon-button" type="button" title="Đọc câu trả lời mới nhất" aria-label="Đọc câu trả lời mới nhất" data-action="speakReply">'+icon('volume')+'</button></div>'+
       '<div class="sw-sl-chat-scroll" id="slChatScroll" aria-live="polite">'+empty+messageHtml+busy+'</div>'+
       '<div class="sw-sl-composer">'+error+'<form id="speakingForm"><textarea id="speakingInput" maxlength="1400" placeholder="Type your answer in English, or record your voice…">'+esc(ui.speakingInput)+'</textarea>'+
       '<div class="sw-sl-composer-actions"><div class="sw-sl-actions-left"><button class="sw-sl-mic '+(ui.recording?'recording':'')+'" type="button" data-action="'+(ui.recording?'stopRecord':'startRecord')+'">'+icon(ui.recording?'square':'mic')+(ui.recording?'Stop recording':'Record answer')+'</button>'+
       (audioReady?'<span class="sw-sl-note">Recording ready · '+Math.max(1,Math.round(ui.audioBlob.size/1024))+' KB</span>':'')+
-      '</div><div class="sw-sl-actions-right">'+(audioReady?'<button class="btn btn-muted" type="button" data-action="discardSpeakingAudio">Discard audio</button><button class="btn btn-primary" type="button" data-action="sendSpeakingAudio">'+icon('send')+' Send recording</button>':'')+
-      '<button class="btn btn-primary" type="submit" '+(ui.speakingBusy||ui.recording?'disabled':'')+'>'+icon('send')+' Send</button></div></div></form>'+
+      '</div><div class="sw-sl-actions-right">'+(audioReady?'<button class="btn btn-muted" type="button" data-action="discardSpeakingAudio">Discard audio</button><button class="btn btn-primary" type="button" data-action="sendSpeakingAudio">'+icon('arrowRight')+' Send recording</button>':'')+
+      '<button class="btn btn-primary" type="submit" '+(ui.speakingBusy||ui.recording?'disabled':'')+'>'+icon('arrowRight')+' Send</button></div></div></form>'+
       '<div class="sw-sl-note">Microphone input is transcribed with Whisper. AI feedback focuses on language use; it is not an official IELTS score.</div></div></section>'+
       '<aside class="sw-sl-side"><article class="sw-sl-side-card"><h3>'+icon('lightbulb')+' How your coach helps</h3><p>Get feedback on natural collocations, awkward word combinations and more precise ways to express your ideas. Then continue the conversation.</p></article>'+
-      '<article class="sw-sl-side-card"><h3>'+icon('message-circle')+' Try a conversation starter</h3><p>Choose a prompt to get started. You can answer in your own words.</p><div class="sw-sl-starter">'+
+      '<article class="sw-sl-side-card"><h3>'+icon('users')+' Try a conversation starter</h3><p>Choose a prompt to get started. You can answer in your own words.</p><div class="sw-sl-starter">'+
       ['What do you usually do to unwind after a busy day?','Tell me about a meal you really enjoyed.','What makes a workplace enjoyable?'].map((x,i)=>'<button type="button" data-action="speakingStarter" data-prompt="'+esc(x)+'">'+['Daily routine','Food & dining','Work & study'][i]+'</button>').join('')+
       '</div></article><article class="sw-sl-side-card"><h3>'+icon('target')+' Learning principle</h3><p>Natural and appropriate language matters more than using as many advanced expressions as possible. Your coach will not penalise simple but accurate English.</p></article></aside></div></section>';
   }
