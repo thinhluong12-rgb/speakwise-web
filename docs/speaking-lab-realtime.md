@@ -64,6 +64,10 @@ wrangler.toml contains non-secret Supabase and model settings. The Realtime API 
 12. Verify a non-verified account receives HTTP 403 and an unauthenticated account receives HTTP 401.
 13. Verify the sixth daily session attempt is rejected; test concurrency separately before treating this as a billing control.
 
+## Automated checks
+
+The `Speaking Lab Voice checks` GitHub Actions workflow runs JavaScript syntax validation and static contract tests for the adult-verification gate, daily session cap, browser API-key isolation, and transcript-only pronunciation limitation. These checks do not replace browser-based end-to-end testing with a real provider session.
+
 ## Deployment boundary
 
 This branch is not a production deployment. Cloudflare deployment and the provider secret are intentionally not performed here because no Cloudflare management action is available in the connected tools. The code must be deployed to a staging environment and tested with an adult-managed provider account before any production rollout.
