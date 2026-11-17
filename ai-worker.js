@@ -96,7 +96,8 @@ const runVoiceAnalysis=async(env,prompt)=>{
  }
  throw new Error(lastError||'No analysis provider is configured.');
 };
-\nexport default {
+
+export default {
  async fetch(req,env) {
   const url=new URL(req.url),path=url.pathname;
   if(!['/evaluate','/health','/generate','/hint','/conversation','/voice/session','/voice/analyze'].includes(path)){return env.ASSETS?.fetch(req)||new Response('Not found',{status:404})}
