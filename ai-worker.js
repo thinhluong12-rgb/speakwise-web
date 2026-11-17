@@ -127,7 +127,7 @@ export default {
        }
        if(i<models.length-1)await new Promise(resolve=>setTimeout(resolve,350));
      }
-     if(!parsed&&lastError?.code==='GEMINI_LOCATION_UNSUPPORTED'&&env.AI?.run){
+     if(!parsed&&lastError&&env.AI?.run){
        try{
          parsed=await workersAiJson(env,prompt,1400);
          modelUsed='Cloudflare Workers AI ('+WORKERS_AI_TEXT_MODEL+')';
@@ -183,7 +183,7 @@ export default {
        detail=detail.replace(/AIza[A-Za-z0-9_-]{20,}/g,'[REDACTED]');
        const locationUnsupported=isGeminiLocationError(response.status,(data?.error?.status||'')+' '+detail);
        if(locationUnsupported)console.warn('SpeakWise /generate location restriction',JSON.stringify({code:'GEMINI_LOCATION_UNSUPPORTED',upstreamStatus:response.status,model}));
-       if(locationUnsupported&&env.AI?.run){
+       if(env.AI?.run){
          try{
            const generated=await workersAiJson(env,prompt,5500);
            const unique=new Set();
@@ -312,7 +312,7 @@ export default {
      // One fallback on 404 (model inaccessible), 5xx, network error or timeout.
      if(i<models.length-1)await new Promise(resolve=>setTimeout(resolve,500));
    }
-   if(!payload&&lastError?.code==='GEMINI_LOCATION_UNSUPPORTED'&&env.AI?.run){
+   if(!payload&&lastError&&env.AI?.run){
      try{
        if(mode==='speak')workerTranscript=await workersAiTranscribe(env,b.audioBase64);
        const workersPrompt=mode==='speak'
