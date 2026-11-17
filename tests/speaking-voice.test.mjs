@@ -54,3 +54,11 @@ test('database quota RPC is invoker-secure and only executable by authenticated 
   assert.match(migration, /revoke all on function[\s\S]*from public/i);
   assert.match(migration, /grant execute on function[\s\S]*to authenticated/i);
 });
+
+test('adult verification precedes provider credential issuance and quota row creation follows provider success', () => {
+  const adultGate = worker.indexOf('if(!user.adultVerified)');
+  const provider = worker.indexOf('https://api.openai.com/v1/realtime/client_secrets');
+  const quotaRpc = worker.indexOf('/rest/v1/rpc/start_speakwise_voice_session');
+  assert.ok(adultGate >= 0 && provider > adultGate);
+  assert.ok(quotaRpc > provider);
+});
