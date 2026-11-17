@@ -5,11 +5,16 @@ compatibility_date = "2026-11-01"
 [assets]
 directory = "./public"
 binding = "ASSETS"
-run_worker_first = ["/evaluate", "/generate", "/hint", "/health", "/conversation"]
+run_worker_first = ["/evaluate", "/generate", "/hint", "/health", "/conversation", "/voice/session", "/voice/analyze"]
 
 [vars]
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_FALLBACK_MODEL = "gemini-3.8-flash"
+SUPABASE_URL = "https://tfweuvvhzhkrmxxebqwp.supabase.co"
+SUPABASE_PUBLISHABLE_KEY = "sb_publishable_0URp8xiDy5xERjwh5X3zPg_kBOaUAV3"
+OPENAI_REALTIME_MODEL = "gpt-realtime-1.5"
+OPENAI_REALTIME_VOICE = "marin"
+OPENAI_TRANSCRIPTION_MODEL = "gpt-4o-mini-transcribe"
 # GEMINI_API_KEY must be configured using Wrangler secrets.
 
 [ai]
