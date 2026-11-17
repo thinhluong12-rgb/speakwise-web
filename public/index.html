@@ -1258,8 +1258,11 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function retryMistake(id){
     const m=store.mistakes.find(x=>x.id===id),entry=store.entries.find(x=>x.id===m?.entryId);
     if(!entry){toast('Không tìm thấy collocation.');return}
-    ui.quizTopic=entry.topicId;ui.quizScope='all';ui.sentenceMode=m.mode==='speak'?'speak':'write';goView('apply');
-    ui.quiz={answerId:entry.id,options:[],selected:null,isCorrect:null};ui.sentenceText='';render();
+    ui.quizTopic=entry.topicId;ui.quizScope='all';ui.sentenceMode=m.mode==='speak'?'speak':'write';
+    resetLabSession();
+    ui.labIds=[entry.id,...ui.labIds.filter(x=>x!==entry.id)];ui.labAt=0;syncLabPointers();
+    goView('apply');
+    ui.sentenceText='';render();
     toast('Hãy tạo một câu mới để kiểm chứng khả năng vận dụng.');
   }
   function render(){document.getElementById('appShell')?.classList.toggle('sw-focus-mode',ui.focusMode);sidebar();header();document.getElementById('pageContent').innerHTML=ui.view==='home'?home():ui.view==='topics'?library():ui.view==='flashcards'?flashcards():ui.view==='review'?reviewLab():ui.view==='mistakes'?mistakesPage():ui.view==='journey'?renderJourney():quiz();if(ui.view==='topics'&&ui.topic!=='all')libraryTable();renderIcons();}
