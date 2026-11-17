@@ -785,7 +785,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       '<button role="tab" type="button" data-action="studyTab" data-mode="'+mode+'" aria-selected="'+(view===target)+'" class="'+(view===target?'active':'')+'">'+icon(svg)+' '+label+'</button>').join('')+'</div>'+
       '<div class="practice-filters">'+
       '<select class="filter-select" aria-label="Chọn topic" id="practiceTopic">'+scopeOptions(ui.quizTopic)+'</select>'+
-      (view==='review'?'<select class="filter-select" aria-label="Lọc danh sách Review" id="practiceScope"><option value="all" '+(ui.quizScope==='all'?'selected':'')+'>Đến hạn ôn ('+dueCount()+')</option>'+
+      (view==='review'?'<select class="filter-select" aria-label="Lọc danh sách Review" id="practiceScope"><option value="all" '+(ui.quizScope==='all'?'selected':'')+'>'+(ui.reviewAll?'Tất cả cụm đã học':'Đến hạn ôn ('+dueCount()+')')+'</option>'+
       '<option value="star" '+(ui.quizScope==='star'?'selected':'')+'>Đến hạn · Đã đánh dấu</option></select>':
       '<select class="filter-select" aria-label="Chọn bộ từ" id="practiceScope"><option value="all" '+(ui.quizScope==='all'?'selected':'')+'>Tất cả cụm từ</option>'+
       '<option value="due" '+(ui.quizScope==='due'?'selected':'')+'>Đến hạn ôn ('+dueCount()+')</option>'+
