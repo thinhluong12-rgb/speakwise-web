@@ -36,8 +36,10 @@ test('transcript storage metadata states that raw audio is not stored', () => {
   assert.match(browser, /raw_audio_stored:false/);
 });
 
-test('browser requests server authorization before opening the microphone', () => {
-  const authorize = browser.indexOf("post('/voice/session',c)");
+test('browser requests server authorization before opening the microphone for either provider', () => {
+  const authorize = Math.min(
+    ...[browser.indexOf("post('/voice/session',c)"), browser.indexOf("post('/voice/gemini-token',c)")].filter(x => x >= 0)
+  );
   const microphone = browser.indexOf("navigator.mediaDevices.getUserMedia");
   assert.ok(authorize >= 0 && microphone > authorize);
   assert.doesNotMatch(browser, /from\('speakwise_voice_sessions'\)\.insert/);
@@ -58,12 +60,15 @@ test('database quota RPC is invoker-secure and only executable by authenticated 
   assert.match(migration, /grant execute on function[\s\S]*to authenticated/i);
 });
 
-test('adult verification precedes provider credential issuance and quota row creation follows provider success', () => {
+test('adult verification precedes both providers and each quota row follows provider credential issuance', () => {
   const adultGate = worker.indexOf('if(!user.adultVerified)');
-  const provider = worker.indexOf('https://api.openai.com/v1/realtime/client_secrets');
-  const quotaRpc = worker.indexOf('/rest/v1/rpc/start_speakwise_voice_session');
-  assert.ok(adultGate >= 0 && provider > adultGate);
-  assert.ok(quotaRpc > provider);
+  const geminiProvider = worker.indexOf('https://generativelanguage.googleapis.com/v1alpha/auth_tokens');
+  const geminiQuotaRpc = worker.indexOf('/rest/v1/rpc/start_speakwise_voice_session');
+  const openAiProvider = worker.indexOf('https://api.openai.com/v1/realtime/client_secrets');
+  const openAiQuotaRpc = worker.lastIndexOf('/rest/v1/rpc/start_speakwise_voice_session');
+  assert.ok(adultGate >= 0 && geminiProvider > adultGate && openAiProvider > adultGate);
+  assert.ok(geminiQuotaRpc > geminiProvider);
+  assert.ok(openAiQuotaRpc > openAiProvider);
 });
 
 test('quota ledger is enforced by a non-callable private trigger function', () => {
