@@ -761,7 +761,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   const saved=readSaved();
   const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[],mistakes:Array.isArray(saved.mistakes)?saved.mistakes:[],deletedMistakeIds:Array.isArray(saved.deletedMistakeIds)?saved.deletedMistakeIds:[],settings:{dailyGoal:8,...(saved.settings||{})},lastPractice:saved.lastPractice||null,learningJourney:saved.learningJourney||null};
   store.entries=store.entries.filter(e=>!store.deletedIds.includes(e.id));
-  const ui={view:'home',speakingTopic:'Daily Life',speakingLevel:'B1',speakingStarted:false,speakingMessages:[],speakingInput:'',speakingBusy:false,speakingError:null,speakingLastReply:'',homeTab:'overview',labStep:'learn',labIds:[],labAt:0,reviewIds:[],reviewAt:0,reviewRevealed:false,hintBusy:false,hintResult:null,hintError:null,section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false,focusMode:false,journey:null,journeyReturn:'home'};
+  const ui={view:'home',speakingTopic:'Daily Life',speakingLevel:'B1',speakingStarted:false,speakingMessages:[],speakingInput:'',speakingBusy:false,speakingError:null,speakingLastReply:'',homeTab:'overview',labStep:'learn',labIds:[],labAt:0,reviewIds:[],reviewAt:0,reviewRevealed:false,hintBusy:false,hintResult:null,hintError:null,section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceOriginalResult:null, sentenceRevisionText:'', sentenceRevisionResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false,focusMode:false,journey:null,journeyReturn:'home'};
   const GROUPS_KEY='speakwise-collapsed-groups-v3';
   let collapsedGroups={life:false,ielts:false};
   try { const remembered=JSON.parse(localStorage.getItem(GROUPS_KEY)||'{}'); collapsedGroups={life:!!remembered.life,ielts:!!remembered.ielts}; } catch (_) {}
@@ -803,7 +803,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     }catch(_){if(endpoint!==aiEndpoint)return;aiHealthState='unavailable'}
     finally{clearTimeout(timer);updateAiStatus()}
   }
-  let recorder=null,micStream=null,recordingTimer=null,audioChunks=[];
+  let recorder=null,micStream=null,recordingTimer=null,recordingGeneration=0;
   function save(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(store))}catch(e){toast('Không lưu được tiến độ. Vui lòng kiểm tra bộ nhớ trình duyệt.')}window.SpeakwiseSync?.scheduleSave?.()}
   const topic = id=>store.topics.find(t=>t.id===id);
   const progress=id=>store.progress[id]||{};
@@ -944,7 +944,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     ui.flipped=false;ui.reviewRevealed=false;
     ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;
     ui.showAnswer=false;ui.recallText='';
-    ui.sentenceText='';ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceBusy=false;
+    ui.sentenceText='';ui.sentenceResult=null;ui.sentenceOriginalResult=null;ui.sentenceRevisionText='';ui.sentenceRevisionResult=null;ui.sentenceError=null;ui.sentenceBusy=false;
     ui.hintResult=null;ui.hintError=null;ui.hintBusy=false;
     syncLabPointers();
   }
@@ -973,7 +973,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     ui.labAt++;
     ui.flipped=false;ui.reviewRevealed=false;
     ui.quiz=null;ui.showAnswer=false;ui.recallText='';
-    ui.sentenceText='';ui.sentenceResult=null;ui.sentenceError=null;ui.sentenceBusy=false;
+    ui.sentenceText='';ui.sentenceResult=null;ui.sentenceOriginalResult=null;ui.sentenceRevisionText='';ui.sentenceRevisionResult=null;ui.sentenceError=null;ui.sentenceBusy=false;
     ui.hintResult=null;ui.hintError=null;ui.hintBusy=false;
     cleanupAudio();syncLabPointers();
   }
@@ -1105,6 +1105,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       ${ui.sentenceMode==='write'?`<div class="sentence-input-area"><label for="sentenceInput">Câu tiếng Anh của bạn</label><textarea id="sentenceInput" rows="4" placeholder="Write a meaningful sentence using the target collocation..." ${ui.sentenceBusy?'disabled':''}>${esc(ui.sentenceText)}</textarea><div class="sentence-actions"><p>Cần sử dụng collocation trong câu, không chỉ chép riêng cụm từ.</p><button class="btn btn-primary" data-action="evaluateSentence" ${ui.sentenceBusy?'disabled':''}>${icon('sparkles')} ${ui.sentenceBusy?'Đang chấm...':'Nhận AI feedback'}</button></div></div>`:
       `<div class="speech-workspace"><div class="speech-icon ${ui.recording?'recording':''}">${icon('microphone')}</div><strong>${ui.recording?'Đang ghi âm câu nói của bạn...':ui.audioBlob?'Đã ghi âm. Nghe lại hoặc gửi chấm.':'Sẵn sàng luyện nói'}</strong><p>${ui.recording?'Bấm Dừng ghi âm khi hoàn thành. Thời lượng tối đa 45 giây.':'Dùng microphone để nói câu tiếng Anh chứa collocation trên.'}</p><div class="speech-controls">${ui.recording?`<button type="button" class="btn btn-record stop" data-action="stopRecord">${icon('square')} Dừng ghi âm</button>`:`<button type="button" class="btn btn-record" data-action="startRecord">${icon('microphone')} ${ui.audioBlob?'Ghi âm lại':'Bắt đầu nói'}</button>`}${ui.audioBlob&&!ui.recording?`<button type="button" class="btn btn-primary" data-action="evaluateSentence" ${ui.sentenceBusy?'disabled':''}>${icon('sparkles')} ${ui.sentenceBusy?'Đang chấm...':'Nhận AI feedback'}</button>`:''}</div>${ui.audioUrl&&!ui.recording?`<audio controls class="speech-playback" src="${esc(ui.audioUrl)}" aria-label="Nghe lại bản ghi âm của bạn"></audio>`:''}</div>`}
       ${ui.sentenceError?`<div class="ai-error-inline" role="alert"><strong>Không thể chấm câu lúc này</strong><p>${esc(ui.sentenceError)}</p><span>Bài làm và bản ghi âm vẫn được giữ lại để bạn có thể thử lại.</span></div>`:''}${ui.sentenceBusy?`<div class="ai-pending" role="status">${icon('sparkles')} AI đang phân tích câu trả lời. Vui lòng đợi...</div>`:''}${feedbackPanel(ui.sentenceResult)}
+      ${ui.sentenceResult?`<section class="sentence-revision"><div class="eyebrow">REFINE YOUR ANSWER</div><h3>Chỉnh sửa câu trả lời theo feedback</h3><p>Đọc góp ý của AI, sửa lại câu trả lời bằng cách diễn đạt của bạn rồi gửi để nhận đánh giá lần hai.</p><label for="sentenceRevisionInput">Phiên bản đã chỉnh sửa</label><textarea id="sentenceRevisionInput" rows="4" ${ui.sentenceBusy?'disabled':''}>${esc(ui.sentenceRevisionText|| (ui.sentenceMode==='speak'?ui.sentenceResult.transcript||'':ui.sentenceText))}</textarea><button type="button" class="btn btn-primary" data-action="evaluateRevision" ${ui.sentenceBusy?'disabled':''}>${icon('sparkles')} ${ui.sentenceBusy?'Đang đánh giá...':'Gửi phiên bản chỉnh sửa'}</button>${ui.sentenceRevisionResult?`<div class="sentence-revision-result"><h4>Feedback cho phiên bản mới · ${esc(String(ui.sentenceRevisionResult.score))}/100</h4>${feedbackPanel(ui.sentenceRevisionResult)}</div>`:''}</section>`:''}
       <div class="sentence-nav"><button class="btn btn-muted" data-action="${ui.view==='journey'?'journeyAdvance':'skipSentence'}">Bỏ qua cụm này</button></div>
       </div>`;
   }
@@ -1221,32 +1222,67 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     window.speechSynthesis.cancel();const utterance=new SpeechSynthesisUtterance(ui.speakingLastReply);utterance.lang='en-US';utterance.rate=.96;window.speechSynthesis.speak(utterance);
   }
   function cleanupAudio(){
+    recordingGeneration++;
     if(recordingTimer){clearTimeout(recordingTimer);recordingTimer=null}
-    if(recorder&&recorder.state==='recording'){try{recorder.stop()}catch(_){}}
-    if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}
-    recorder=null;ui.recording=false;ui.audioBlob=null;
+    const oldRecorder=recorder,oldStream=micStream;
+    recorder=null;micStream=null;ui.recording=false;
+    if(oldRecorder){
+      oldRecorder.ondataavailable=null;oldRecorder.onstop=null;oldRecorder.onerror=null;
+      if(oldRecorder.state!=='inactive'){try{oldRecorder.stop()}catch(_){}}
+    }
+    if(oldStream)oldStream.getTracks().forEach(track=>{try{track.stop()}catch(_){}});
     if(ui.audioUrl){URL.revokeObjectURL(ui.audioUrl);ui.audioUrl=null}
+    ui.audioBlob=null;
   }
   async function startRecord(){
-    if(ui.sentenceBusy||ui.speakingBusy)return;
-    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){toast('Trình duyệt chưa hỗ trợ ghi âm. Hãy mở qua HTTPS/localhost bằng Chrome hoặc Edge.');return}
+    if(ui.sentenceBusy||ui.speakingBusy||ui.recording)return;
+    if(!navigator.mediaDevices?.getUserMedia||!window.MediaRecorder){toast('Trình duyệt chưa hỗ trợ ghi âm. Hãy mở qua HTTPS/localhost bằng Safari hoặc Chrome mới.');return}
+    cleanupAudio();
+    const generation=++recordingGeneration;
     try{
-      cleanupAudio();micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true}});
-      const mime=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg'].find(m=>MediaRecorder.isTypeSupported(m));
-      recorder=mime?new MediaRecorder(micStream,{mimeType:mime}):new MediaRecorder(micStream);
-      const rec=recorder;audioChunks=[];ui.sentenceResult=null;
-      rec.ondataavailable=e=>{if(e.data?.size)audioChunks.push(e.data)};
-      rec.onstop=()=>{
-        if(micStream){micStream.getTracks().forEach(t=>t.stop());micStream=null}
-        if(recordingTimer){clearTimeout(recordingTimer);recordingTimer=null}
-        if(audioChunks.length){ui.audioBlob=new Blob(audioChunks,{type:rec.mimeType||'audio/webm'});ui.audioUrl=URL.createObjectURL(ui.audioBlob)}
-        ui.recording=false;if(ui.view==='apply'||ui.view==='journey'||ui.view==='speakingLab')render();
+      const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      if(generation!==recordingGeneration){stream.getTracks().forEach(track=>track.stop());return}
+      micStream=stream;
+      const mime=['audio/webm;codecs=opus','audio/webm','audio/mp4','audio/ogg;codecs=opus','audio/ogg'].find(type=>MediaRecorder.isTypeSupported?.(type));
+      const rec=mime?new MediaRecorder(stream,{mimeType:mime}):new MediaRecorder(stream);
+      recorder=rec;
+      const chunks=[];
+      rec.ondataavailable=event=>{if(generation===recordingGeneration&&event.data?.size)chunks.push(event.data)};
+      rec.onerror=event=>{
+        if(generation!==recordingGeneration)return;
+        ui.sentenceError='Lỗi trong quá trình ghi âm: '+(event.error?.message||'Không thể tiếp tục thu âm.');
+        cleanupAudio();render();
       };
-      rec.start();ui.recording=true;render();
-      recordingTimer=setTimeout(()=>{if(rec.state==='recording')stopRecord()},45000);
-    }catch(err){cleanupAudio();toast('Không thể dùng microphone: '+(err?.name==='NotAllowedError'?'Bạn chưa cấp quyền truy cập.':'Kiểm tra quyền truy cập và HTTPS.'))}
+      rec.onstop=()=>{
+        if(generation!==recordingGeneration)return;
+        if(recordingTimer){clearTimeout(recordingTimer);recordingTimer=null}
+        if(micStream===stream)micStream=null;
+        stream.getTracks().forEach(track=>{try{track.stop()}catch(_){}});
+        if(recorder===rec)recorder=null;
+        if(chunks.length){
+          ui.audioBlob=new Blob(chunks,{type:rec.mimeType||'audio/webm'});
+          if(ui.audioUrl)URL.revokeObjectURL(ui.audioUrl);
+          ui.audioUrl=URL.createObjectURL(ui.audioBlob);
+        }else{
+          ui.audioBlob=null;
+          ui.sentenceError='Không thu được dữ liệu âm thanh. Hãy kiểm tra quyền microphone rồi thử lại.';
+        }
+        ui.recording=false;
+        if(ui.view==='apply'||ui.view==='journey'||ui.view==='speakingLab')render();
+      };
+      rec.start(250);ui.recording=true;ui.sentenceError=null;render();
+      recordingTimer=setTimeout(()=>{if(generation===recordingGeneration&&rec.state==='recording')stopRecord()},45000);
+    }catch(err){
+      if(generation===recordingGeneration)cleanupAudio();
+      toast('Không thể dùng microphone: '+(err?.name==='NotAllowedError'?'Bạn chưa cấp quyền truy cập.':err?.name==='NotFoundError'?'Không tìm thấy microphone.':'Kiểm tra quyền truy cập microphone và kết nối HTTPS.'));
+    }
   }
-  function stopRecord(){if(recorder&&recorder.state==='recording'){recorder.stop();ui.recording=false;render()}}
+  function stopRecord(){
+    const rec=recorder;if(!rec||rec.state!=='recording')return;
+    if(recordingTimer){clearTimeout(recordingTimer);recordingTimer=null}
+    try{rec.stop()}catch(err){ui.sentenceError='Không thể kết thúc bản ghi. Hãy thử lại.'}
+    ui.recording=false;render();
+  }
   async function blobAsBase64(blob){return await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||'').split(',')[1]||'');reader.onerror=()=>reject(new Error('Không thể đọc âm thanh.'));reader.readAsDataURL(blob)})}
   async function requestAIHint(){
     if(ui.hintBusy||!ui.quiz)return;
@@ -1296,13 +1332,38 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       const result=data.result||data;
       if(!Number.isFinite(Number(result.score))||!result.dimensions||typeof result!=='object')throw new Error('Dữ liệu điểm đánh giá chưa đúng định dạng.');
       if(mode!==ui.sentenceMode||current.id!==ui.quiz?.answerId)return;
-      ui.sentenceResult=result;ui.sentenceError=null;
+      ui.sentenceResult=result;ui.sentenceOriginalResult=result;ui.sentenceRevisionText=mode==='speak'?String(result.transcript||''):ui.sentenceText.trim();ui.sentenceRevisionResult=null;ui.sentenceError=null;
       const appropriate=Number(result.score)>=75&&Number(result.dimensions?.targetUsage)>=75&&Number(result.dimensions?.grammar)>=65;
       review(current.id,appropriate?'good':'hard',{action:mode,correct:appropriate,score:Number(result.score),
         targetUsage:Number(result.dimensions?.targetUsage),grammar:Number(result.dimensions?.grammar),
         transcript:mode==='speak'?result.transcript:''});
       toast('Đã nhận phản hồi AI và cập nhật lịch ôn.');
     }catch(err){ui.sentenceError=err.name==='AbortError'?'Dịch vụ AI phản hồi quá lâu. Vui lòng thử lại.':String(err.message||'Lỗi khi chấm.');toast('Không thể chấm: xem nguyên nhân bên dưới câu trả lời.');}
+    finally{clearTimeout(timeout);ui.sentenceBusy=false;render()}
+  }
+  async function evaluateRevision(){
+    if(ui.sentenceBusy||!ui.quiz)return;
+    const answer=String(ui.sentenceRevisionText||'').trim();
+    if(answer.length<12){toast('Hãy chỉnh sửa và viết ít nhất một câu có nghĩa.');return}
+    if(!aiEndpoint){ui.sentenceError='Chưa có kết nối AI để đánh giá phiên bản chỉnh sửa.';render();return}
+    const current=store.entries.find(e=>e.id===ui.quiz.answerId);if(!current)return;
+    ui.sentenceBusy=true;ui.sentenceError=null;render();
+    const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),60000);
+    try{
+      const response=await fetch(aiEndpoint,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({mode:'write',answer,phrase:current.phrase,meaning:current.meaning,topic:topic(current.topicId)?.name||'',language:'vi'}),
+        signal:controller.signal});
+      let data;try{data=await response.json()}catch(_){throw new Error('Dịch vụ AI trả về dữ liệu không hợp lệ.')}
+      if(!response.ok)throw new Error([data.error||'Không thể đánh giá phiên bản mới.',data.detail?'Chi tiết Gemini: '+data.detail:'',data.fallbackError?'Chi tiết Workers AI: '+data.fallbackError:'',data.workersAIDetail?'Chi tiết Workers AI: '+data.workersAIDetail:''].filter(Boolean).join(' · '));
+      const result=data.result||data;
+      if(!Number.isFinite(Number(result.score))||!result.dimensions||typeof result!=='object')throw new Error('Dữ liệu feedback của phiên bản mới chưa đúng định dạng.');
+      if(current.id!==ui.quiz?.answerId)return;
+      ui.sentenceRevisionResult=result;
+      const appropriate=Number(result.score)>=75&&Number(result.dimensions?.targetUsage)>=75&&Number(result.dimensions?.grammar)>=65;
+      review(current.id,appropriate?'good':'hard',{action:'revision',correct:appropriate,score:Number(result.score),
+        targetUsage:Number(result.dimensions?.targetUsage),grammar:Number(result.dimensions?.grammar),transcript:answer});
+      toast('Đã đánh giá phiên bản chỉnh sửa.');
+    }catch(err){ui.sentenceError=err.name==='AbortError'?'AI đánh giá quá lâu. Vui lòng thử lại.':String(err.message||'Không thể đánh giá phiên bản chỉnh sửa.')}
     finally{clearTimeout(timeout);ui.sentenceBusy=false;render()}
   }
   function startJourney(ids){
@@ -1823,7 +1884,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'rate':{const currentId=labCurrentId();if(currentId)review(currentId,rating,{action:'flashcard',correct:rating!=='hard'});advanceLab();render();break;}
       case 'restart':resetLabSession();render();break;
       case 'quizMode':cleanupAudio();ui.quizMode=mode;ui.quiz=null;ui.quizSeen=[];ui.quizTotal=0;ui.quizCorrect=0;ui.sentenceResult=null;ui.sentenceError=null;render();writeRoute();break;
-      case 'sentenceMode':cleanupAudio();ui.sentenceMode=mode;ui.sentenceResult=null;ui.sentenceError=null;ui.hintResult=null;ui.hintError=null;render();writeRoute();break;
+      case 'sentenceMode':cleanupAudio();ui.sentenceMode=mode;ui.sentenceResult=null;ui.sentenceOriginalResult=null;ui.sentenceRevisionText='';ui.sentenceRevisionResult=null;ui.sentenceError=null;ui.hintResult=null;ui.hintError=null;render();writeRoute();break;
       case 'saveEndpoint':{
         const value=document.getElementById('aiEndpoint')?.value.trim()||'';
         if(value){
@@ -1851,6 +1912,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'speakReply':speakSpeakingReply();break;
       case 'stopRecord':stopRecord();break;
       case 'evaluateSentence':evaluateSentence();break;
+      case 'evaluateRevision':evaluateRevision();break;
       case 'requestHint':requestAIHint();break;
       case 'reviewReveal':ui.reviewRevealed=true;render();break;
       case 'reviewAll':ui.quizScope='learned';resetLabSession();render();break;
@@ -1867,7 +1929,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'revealQuiz':checkRecall('',true);break;
     }
   });
-  document.addEventListener('input',e=>{if(e.target.id==='searchInput'){ui.query=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='recallInput')ui.recallText=e.target.value;if(e.target.id==='sentenceInput')ui.sentenceText=e.target.value;if(e.target.id==='speakingInput')ui.speakingInput=e.target.value});
+  document.addEventListener('input',e=>{if(e.target.id==='searchInput'){ui.query=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='recallInput')ui.recallText=e.target.value;if(e.target.id==='sentenceInput')ui.sentenceText=e.target.value;if(e.target.id==='sentenceRevisionInput')ui.sentenceRevisionText=e.target.value;if(e.target.id==='speakingInput')ui.speakingInput=e.target.value});
   document.addEventListener('change',e=>{if(e.target.id==='statusFilter'){ui.filter=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='practiceTopic'||e.target.id==='practiceScope'){ui.quizTopic=document.getElementById('practiceTopic').value;ui.quizScope=document.getElementById('practiceScope').value;resetLabSession();render()}if(e.target.id==='dailyGoalSelect'){store.settings.dailyGoal=Number(e.target.value)||8;save();render()}if(e.target.id==='slTopic'&&ui.speakingTopic!==e.target.value){ui.speakingTopic=e.target.value;cleanupAudio();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingLastReply='';ui.speakingError=null;render()}if(e.target.id==='slLevel'&&ui.speakingLevel!==e.target.value){ui.speakingLevel=e.target.value;cleanupAudio();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingLastReply='';ui.speakingError=null;render()}if(e.target.id==='entryTopic')updateFormTopics();if(e.target.id==='aiTopicSelect'){const box=document.getElementById('aiNewTopicField');if(box)box.hidden=e.target.value!=='__new__'}});
   document.addEventListener('submit',e=>{if(e.target.id==='entryForm'){e.preventDefault();saveEntry(e.target)}if(e.target.id==='recallForm'){e.preventDefault();checkRecall(ui.recallText)}if(e.target.id==='aiCreateForm'){e.preventDefault();generateCollocations()}if(e.target.id==='journeyRecallForm'){e.preventDefault();journeyCheckRecall(document.getElementById('journeyRecallInput')?.value||'')}if(e.target.id==='speakingForm'){e.preventDefault();sendSpeakingTurn('text')}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeModal();document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')}if(e.key===' '&&!['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName)&&!ui.modal&&!ui.drawer&&ui.view==='flashcards'){e.preventDefault();if(ui.deck[ui.deckAt]){ui.flipped=!ui.flipped;render()}}if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-action="detail"]')){e.preventDefault();openDrawer(e.target.dataset.id)}if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('flashcard')&&ui.view==='flashcards'){e.preventDefault();ui.flipped=!ui.flipped;render()}});
