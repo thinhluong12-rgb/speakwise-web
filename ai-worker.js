@@ -6,6 +6,14 @@
 const headers=(origin)=>({'content-type':'application/json; charset=utf-8','access-control-allow-origin':origin,'access-control-allow-headers':'content-type','access-control-allow-methods':'POST, OPTIONS','cache-control':'no-store','vary':'Origin','x-content-type-options':'nosniff'});
 const reply=(value,status,origin)=>new Response(JSON.stringify(value),{status,headers:headers(origin)});
 const limit=(x,n=1400)=>String(x||'').slice(0,n);
+const describeAIError=err=>{
+ const parts=[];
+ if(err?.message)parts.push(err.message);
+ if(err?.cause?.message)parts.push('cause: '+err.cause.message);
+ if(Array.isArray(err?.errors))for(const item of err.errors.slice(0,3))parts.push([item?.code,item?.message].filter(Boolean).join(': '));
+ if(!parts.length&&typeof err==='string')parts.push(err);
+ return limit(parts.join(' | ')||'Unknown Workers AI error',260);
+};
 const score=x=>Number.isFinite(Number(x))?Math.max(0,Math.min(100,Math.round(Number(x)))):null;
 const isGeminiLocationError=(status,message)=>status===400&&/FAILED_PRECONDITION|user location is not supported|location (is )?not supported|unsupported location/i.test(String(message||''));
 const WORKERS_AI_TEXT_MODEL='@cf/meta/llama-3.3-70b-instruct-fp8-fast';
@@ -20,10 +28,13 @@ const workersAiJson=async(env,prompt,maxTokens=1800)=>{
   max_tokens:maxTokens,
   temperature:0.2
  });
- const raw=typeof result==='string'?result:(result?.response||result?.output_text||result?.text||'');
- if(!raw)throw new Error('Workers AI không trả về nội dung.');
- const clean=String(raw).trim();
- return JSON.parse(clean);
+ if(result?.success===false||Array.isArray(result?.errors)&&result.errors.length){
+  throw new Error('Cloudflare Workers AI: '+describeAIError(result));
+ }
+ const raw=typeof result==='string'?result:(typeof result?.response==='string'?result.response:result?.output_text||result?.text||'');
+ if(!raw)throw new Error('Workers AI không trả về nội dung JSON. '+describeAIError(result));
+ const clean=String(raw).trim().replace(/^```(?:json)?\\s*/i,'').replace(/\\s*```$/,'');
+ try{return JSON.parse(clean)}catch(parseError){throw new Error('Workers AI trả về JSON không hợp lệ: '+describeAIError(parseError))}
 };
 const workersAiTranscribe=async(env,audioBase64)=>{
  if(!env.AI||typeof env.AI.run!=='function')throw new Error('Thiếu Workers AI binding (AI).');
@@ -99,19 +110,22 @@ export default {
        }else if(response&&!response.ok){
          const status=response.status,detail=redact(data?.error?.message||'');
          const locationUnsupported=isGeminiLocationError(status,(data?.error?.status||'')+' '+detail)||/not available in your location/i.test(detail);
-         const category=locationUnsupported?'GEMINI_LOCATION_UNSUPPORTED':
+         const invalidKey=status===400&&/api key not valid|api_key_invalid|invalid api key/i.test((data?.error?.status||'')+' '+detail);
+         const category=locationUnsupported?'GEMINI_LOCATION_UNSUPPORTED':invalidKey?'GEMINI_AUTH':
            status===401?'GEMINI_AUTH':status===403?'GEMINI_PERMISSION':
            status===429?'GEMINI_QUOTA':status===404?'GEMINI_MODEL_NOT_FOUND':
            status>=500?'GEMINI_UPSTREAM':'GEMINI_REQUEST';
          lastError={
-           status:locationUnsupported?503:(status===404?502:status),
+           status:locationUnsupported||invalidKey?503:(status===404?502:status),
            error:locationUnsupported
              ?'Gemini Idea Suggestions hiện không khả dụng từ môi trường máy chủ này.'
+             :invalidKey?'Gemini API key không hợp lệ. Cần cập nhật secret GEMINI_API_KEY trên Cloudflare.'
              :'Gemini không thể tạo gợi ý ('+status+').',
            code:category,
            detail,
            help:locationUnsupported
              ?'Google từ chối request vì vị trí gửi request không được hỗ trợ. Đổi model/API key thường không khắc phục được lỗi này; cần kiểm tra đường truyền hoặc môi trường chạy Worker.'
+             :invalidKey?'Thay GEMINI_API_KEY trong Cloudflare Worker bằng key hợp lệ từ Google AI Studio; không gửi key trong chat hoặc mã nguồn.'
              :status===429?'Gemini đang giới hạn quota hoặc tốc độ yêu cầu. Hãy kiểm tra quota trước khi thử lại.'
              :status===401||status===403?'Kiểm tra quyền và giới hạn của API key.'
              :status===404?'Kiểm tra tên model và quyền truy cập model.'
@@ -123,7 +137,7 @@ export default {
          console.warn('SpeakWise /hint upstream failure',JSON.stringify({
            category,upstreamStatus:status,model,elapsedMs:Date.now()-began
          }));
-         if(locationUnsupported||[401,403,429].includes(status))break;
+         if(locationUnsupported||invalidKey||[401,403,429].includes(status))break;
        }
        if(i<models.length-1)await new Promise(resolve=>setTimeout(resolve,350));
      }
@@ -134,7 +148,7 @@ export default {
          attempts.push({model:WORKERS_AI_TEXT_MODEL,provider:'workers-ai',status:200});
        }catch(fallbackError){
          attempts.push({model:WORKERS_AI_TEXT_MODEL,provider:'workers-ai',status:'error'});
-         lastError={...lastError,fallbackError:limit(fallbackError?.message||'Workers AI fallback failed',180)};
+         lastError={...lastError,fallbackError:describeAIError(fallbackError)};
        }
      }
      if(!parsed)return reply({...lastError,attempts,elapsedMs:Date.now()-started},lastError?.status===504?504:lastError?.status===503?503:502,allowed);
@@ -182,6 +196,7 @@ export default {
        if(env.GEMINI_API_KEY)detail=detail.split(env.GEMINI_API_KEY).join('[REDACTED]');
        detail=detail.replace(/AIza[A-Za-z0-9_-]{20,}/g,'[REDACTED]');
        const locationUnsupported=isGeminiLocationError(response.status,(data?.error?.status||'')+' '+detail);
+       const invalidKey=response.status===400&&/api key not valid|api_key_invalid|invalid api key/i.test((data?.error?.status||'')+' '+detail);
        if(locationUnsupported)console.warn('SpeakWise /generate location restriction',JSON.stringify({code:'GEMINI_LOCATION_UNSUPPORTED',upstreamStatus:response.status,model}));
        if(env.AI?.run){
          try{
@@ -198,7 +213,7 @@ export default {
            if(entries.length)return reply({entries,modelUsed:'Cloudflare Workers AI ('+WORKERS_AI_TEXT_MODEL+')',requested:count,generated:entries.length},200,allowed);
            throw new Error('Workers AI không trả về collocations hợp lệ.');
          }catch(fallbackError){
-           return reply({error:'Gemini bị giới hạn vị trí và Workers AI fallback chưa xử lý được yêu cầu.',code:'AI_FALLBACK_FAILED',detail:limit(fallbackError?.message||'',220)},503,allowed);
+           return reply({error:invalidKey?'Gemini API key không hợp lệ và Workers AI fallback cũng thất bại.':'Gemini không xử lý được yêu cầu và Workers AI fallback cũng thất bại.',code:'AI_FALLBACK_FAILED',geminiDetail:detail,workersAIDetail:describeAIError(fallbackError)},503,allowed);
          }
        }
        return reply({
@@ -291,8 +306,9 @@ export default {
        const message=redact(upstream.message||'');
        const code=limit(upstream.status||'UNKNOWN',50).replace(/[^A-Z0-9_]/gi,'');
        const locationUnsupported=isGeminiLocationError(status,code+' '+message);
+       const invalidKey=status===400&&/api key not valid|api_key_invalid|invalid api key/i.test(code+' '+message);
        const reason={
-         400:locationUnsupported?'Google từ chối request do điều kiện vị trí của kết nối máy chủ; không phải lỗi câu viết hay định dạng âm thanh.':'Yêu cầu chưa được Gemini chấp nhận; cần kiểm tra câu viết hoặc định dạng âm thanh.',
+         400:locationUnsupported?'Google từ chối request do điều kiện vị trí của kết nối máy chủ; không phải lỗi câu viết hay định dạng âm thanh.':invalidKey?'GEMINI_API_KEY trên Cloudflare không hợp lệ hoặc đã bị thu hồi; cần cập nhật secret.':'Yêu cầu chưa được Gemini chấp nhận; cần kiểm tra câu viết hoặc định dạng âm thanh.',
          401:'API key không hợp lệ hoặc không được cấp quyền.',
          403:'API key bị giới hạn hoặc Gemini không cho phép yêu cầu này.',
          404:'Model không hỗ trợ API hoặc chưa khả dụng với tài khoản.',
@@ -327,7 +343,7 @@ export default {
        attempts.push({model:WORKERS_AI_TEXT_MODEL,provider:'workers-ai',status:200});
      }catch(fallbackError){
        attempts.push({model:WORKERS_AI_TEXT_MODEL,provider:'workers-ai',status:'error'});
-       lastError={...lastError,fallbackError:limit(fallbackError?.message||'Workers AI fallback failed',180)};
+       lastError={...lastError,fallbackError:describeAIError(fallbackError)};
      }
    }
    if(!payload){
