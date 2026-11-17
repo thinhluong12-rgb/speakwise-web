@@ -7,32 +7,52 @@
  const tell=msg=>ctx?.toast?.(msg);
  const label=msg=>{const el=$('syncButton');if(el)el.textContent=msg;};
  const enabled=()=>!!(api&&user&&ctx);
- function dialog(){
+ function setGate(locked){
+  document.documentElement.classList.toggle('sw-auth-required',!!locked);
+  document.documentElement.classList.remove('sw-auth-pending');
+ }
+ function showDialog(required=false){
   let host=$('speakwiseSyncHost');
   if(!host){host=document.createElement('div');host.id='speakwiseSyncHost';document.body.append(host);}
-  host.innerHTML='<div class="sw-sync-shade"></div><div class="sw-sync-modal" role="dialog" aria-modal="true"><button id="swSyncClose" type="button" class="sw-sync-close" aria-label="Đóng">×</button><h2>Tài khoản Speakwise</h2><p id="swSyncMessage"></p><div id="swSyncControls"></div><small>Dữ liệu riêng tư cần Supabase Row Level Security. Không sử dụng service_role key trên trình duyệt.</small></div>';
+  host.dataset.required=required?'1':'0';
+  host.innerHTML='<div class="sw-sync-shade"></div><div class="sw-sync-modal" role="dialog" aria-modal="true" aria-labelledby="swSyncTitle"><button id="swSyncClose" type="button" class="sw-sync-close" aria-label="Đóng">×</button><h2 id="swSyncTitle">Đăng nhập SpeakWise</h2><p id="swSyncMessage"></p><div id="swSyncControls"></div><div class="sw-sync-login-note" id="swSyncNote">Đăng nhập để truy cập không gian học tập, Speaking Lab và đồng bộ tiến độ trên các thiết bị.</div><small>Thông tin đăng nhập được xử lý an toàn qua Supabase Authentication.</small></div>';
   host.classList.add('open');
-  host.querySelector('.sw-sync-shade').addEventListener('click',()=>host.classList.remove('open'));
-  $('swSyncClose').addEventListener('click',()=>host.classList.remove('open'));
+  const close=()=>{if(host.dataset.required!=='1')host.classList.remove('open')};
+  host.querySelector('.sw-sync-shade').addEventListener('click',close);
+  $('swSyncClose').addEventListener('click',close);
   const message=$('swSyncMessage'),body=$('swSyncControls');
-  if(!cfg.supabaseUrl||!cfg.supabasePublishableKey){message.textContent='Website hiện lưu dữ liệu trên thiết bị; chưa có dự án Supabase riêng.';return;}
-  if(!api){message.textContent='Chưa kết nối được Supabase. Kiểm tra config.js và đường truyền.';return;}
+  if(!cfg.supabaseUrl||!cfg.supabasePublishableKey){
+   message.textContent='Hệ thống đăng nhập chưa được cấu hình. Vui lòng liên hệ quản trị viên.';
+   body.innerHTML='<p class="sw-sync-error">Thiếu Supabase URL hoặc publishable key trong config.js.</p>';
+   $('swSyncClose').hidden=required;return;
+  }
+  if(!api){message.textContent='Đang kết nối dịch vụ tài khoản…';body.innerHTML='<p>Vui lòng chờ trong giây lát.</p>';return;}
   if(!user){
-   message.textContent='Đăng nhập bằng email để mở khóa đồng bộ tiến độ và các tính năng dành cho tài khoản.';
-   body.innerHTML='<label>Email <input id="swSyncEmail" type="email" autocomplete="email" placeholder="email@example.com"/></label><button type="button" class="btn btn-primary" id="swSyncLogin">Gửi liên kết đăng nhập</button>';
+   message.textContent='Nhập email để nhận liên kết đăng nhập an toàn. Sau khi xác thực, website sẽ tự động mở khóa.';
+   body.innerHTML='<label for="swSyncEmail">Địa chỉ email</label><input id="swSyncEmail" type="email" autocomplete="email" placeholder="name@example.com" required/><p class="sw-sync-error" id="swSyncError" hidden></p><button type="button" class="btn btn-primary sw-sync-submit" id="swSyncLogin">Gửi liên kết đăng nhập</button>';
+   $('swSyncClose').hidden=required;
    $('swSyncLogin').addEventListener('click',async()=>{
-    const email=$('swSyncEmail').value.trim();
-    if(!/^\S+@\S+\.\S+$/.test(email)){tell('Hãy nhập email hợp lệ.');return}
-    const {error}=await api.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
-    tell(error?'Lỗi gửi email: '+error.message:'Đã gửi liên kết đăng nhập qua email.');
+    const email=$('swSyncEmail').value.trim(),button=$('swSyncLogin'),err=$('swSyncError');
+    err.hidden=true;err.textContent='';
+    if(!/^\S+@\S+\.\S+$/.test(email)){err.textContent='Vui lòng nhập địa chỉ email hợp lệ.';err.hidden=false;return;}
+    button.disabled=true;button.textContent='Đang gửi…';
+    try{
+     const {error}=await api.auth.signInWithOtp({email,options:{emailRedirectTo:location.origin+location.pathname}});
+     if(error)throw error;
+     message.textContent='Liên kết đăng nhập đã được gửi. Hãy mở email và bấm vào liên kết để xác thực. Website sẽ tự động mở sau khi xác thực thành công.';
+     body.innerHTML='<p class="sw-sync-login-note">Đang chờ xác thực email. Hãy kiểm tra cả thư mục Spam/Quảng cáo nếu chưa thấy thư.</p><button type="button" class="btn btn-muted sw-sync-submit" id="swSyncResend">Nhập email khác / gửi lại</button>';
+     $('swSyncResend').onclick=()=>showDialog(required);
+    }catch(e){err.textContent=e.message||'Không gửi được email đăng nhập. Vui lòng thử lại.';err.hidden=false;button.disabled=false;button.textContent='Gửi liên kết đăng nhập';}
    });
   }else{
-   message.textContent='Đã đăng nhập: '+(user.email||'Supabase user');
-   body.innerHTML='<button type="button" class="btn btn-primary" id="swSyncNow">Đồng bộ ngay</button> <button type="button" class="btn btn-muted" id="swSyncLogout">Đăng xuất</button>';
-   $('swSyncNow').onclick=async()=>{await load();await push()};
-   $('swSyncLogout').onclick=async()=>{await api.auth.signOut();user=null;label('Đồng bộ');host.classList.remove('open');tell('Đã đăng xuất; bản sao dữ liệu trên thiết bị vẫn còn.')};
+   message.textContent='Bạn đã đăng nhập với '+(user.email||'tài khoản SpeakWise')+'.';
+   body.innerHTML='<button type="button" class="btn btn-primary sw-sync-submit" id="swSyncNow">Đồng bộ ngay</button><button type="button" class="btn btn-muted sw-sync-submit" id="swSyncLogout">Đăng xuất</button>';
+   $('swSyncClose').hidden=false;
+   $('swSyncNow').onclick=async()=>{await load();await push();host.classList.remove('open');};
+   $('swSyncLogout').onclick=async()=>{const {error}=await api.auth.signOut();if(error){tell(error.message);return;}user=null;setGate(true);showDialog(true);label('Đăng nhập');tell('Bạn đã đăng xuất.');};
   }
  }
+ function dialog(){showDialog(false)}
  async function load(){
   if(!enabled()||loading)return;loading=true;label('Tài khoản');
   try{
@@ -162,17 +182,35 @@
  async function init(context){
   ctx=context;
   $('syncButton')?.addEventListener('click',dialog);
-  if(!cfg.supabaseUrl||!cfg.supabasePublishableKey){label('Đăng nhập');return}
-  if(!window.supabase?.createClient){label('Đăng nhập');return}
+  setGate(true);
+  if(!cfg.supabaseUrl||!cfg.supabasePublishableKey||!window.supabase?.createClient){
+   showDialog(true);
+   $('swSyncMessage').textContent='Không thể mở website vì hệ thống đăng nhập chưa sẵn sàng.';
+   $('swSyncControls').innerHTML='<p class="sw-sync-error">Thiếu cấu hình Supabase hoặc không tải được thư viện xác thực. Vui lòng kiểm tra config.js và kết nối mạng.</p>';
+   $('swSyncClose').hidden=true;return;
+  }
   api=window.supabase.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey);
-  const {data,error}=await api.auth.getSession();
-  if(error){tell(error.message);return;}
-  user=data?.session?.user||null;
-  if(user){await load();scheduleSave()}else label('Đăng nhập');
+  let sessionResult;
+  try{sessionResult=await api.auth.getSession();}
+  catch(e){sessionResult={error:e};}
+  if(sessionResult.error){
+   showDialog(true);
+   $('swSyncMessage').textContent='Không kiểm tra được trạng thái đăng nhập.';
+   $('swSyncControls').innerHTML='<p class="sw-sync-error">'+String(sessionResult.error.message||'Lỗi xác thực')+'</p><button class="btn btn-primary sw-sync-submit" id="swSyncRetry">Thử lại</button>';
+   $('swSyncClose').hidden=true;$('swSyncRetry').onclick=()=>location.reload();return;
+  }
+  user=sessionResult.data?.session?.user||null;
+  setGate(!user);
+  if(user){label('Tài khoản');await load();scheduleSave();}
+  else{label('Đăng nhập');showDialog(true);}
   api.auth.onAuthStateChange((event,session)=>{
    const was=user?.id;user=session?.user||null;
-   if(user&&user.id!==was){load().then(scheduleSave)}
-   else if(!user)label('Đăng nhập');
+   if(user){
+    setGate(false);label('Tài khoản');
+    if(user.id!==was){const host=$('speakwiseSyncHost');if(host)host.classList.remove('open');load().then(scheduleSave);}
+   }else{
+    setGate(true);label('Đăng nhập');showDialog(true);
+   }
   });
  }
  window.SpeakwiseSync={init,scheduleSave};
