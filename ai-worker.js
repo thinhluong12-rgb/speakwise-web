@@ -167,7 +167,7 @@ export default {
    if(path==='/conversation'){
      const topic=limit(b.topic,100).trim()||'Everyday conversation';
      const level=['A2','B1','B2','C1'].includes(String(b.level||'').toUpperCase())?String(b.level).toUpperCase():'B1';
-     const mode=b.mode==='speak'?'speak':'text';
+     const mode=b.mode==='speak'?'speak':b.mode==='start'?'start':'text';
      let userText=limit(b.message,1400).trim();
      if(mode==='speak'){
        if(typeof b.audioBase64!=='string'||b.audioBase64.length<1000||b.audioBase64.length>8e6||!/^[A-Za-z0-9+/=]+$/.test(b.audioBase64))
@@ -177,7 +177,7 @@ export default {
          return reply({error:'Định dạng ghi âm chưa được hỗ trợ.'},415,allowed);
        try{userText=await workersAiTranscribe(env,b.audioBase64)}
        catch(transcribeError){return reply({error:'Không thể chuyển giọng nói thành văn bản.',detail:describeAIError(transcribeError)},502,allowed)}
-     }else if(userText.length<2){
+     }else if(mode==='text'&&userText.length<2){
        return reply({error:'Hãy nhập câu trả lời trước khi gửi.'},400,allowed);
      }
      if(userText.length>1400)userText=userText.slice(0,1400);
@@ -185,11 +185,14 @@ export default {
        role:m?.role==='assistant'?'assistant':'user',content:limit(m?.content,1400).trim()
      })).filter(m=>m.content);
      const targets=(Array.isArray(b.targetCollocations)?b.targetCollocations:[]).slice(0,8).map(x=>limit(x,100).trim()).filter(Boolean);
+     const isStart=mode==='start';
      const prompt='You are SpeakWise Speaking Lab, a warm but rigorous English conversation partner and collocation coach. '+
-       'Continue a realistic spoken conversation about '+JSON.stringify(topic)+' at CEFR '+level+'. '+
+       (isStart
+         ?'Start a new, natural spoken conversation about '+JSON.stringify(topic)+' at CEFR '+level+'. The learner has explicitly pressed the start button and has not spoken yet. Open with a brief, friendly greeting and exactly ONE engaging, easy-to-answer question directly related to this topic. Do not ask a generic question unrelated to the selected topic. Keep the opening concise and welcoming. '
+         :'Continue a realistic spoken conversation about '+JSON.stringify(topic)+' at CEFR '+level+'. ')+
        'Conversation history (oldest first): '+JSON.stringify(history)+'. Latest learner turn: '+JSON.stringify(userText)+'. '+
        'Optional collocations the learner wants to practise: '+JSON.stringify(targets)+'. '+
-       'Respond naturally to what the learner actually said, then ask exactly ONE relevant follow-up question in assistantMessage. '+
+       (isStart?'As this is the opening turn, provide no learner feedback; return an empty feedback object. ':'Respond naturally to what the learner actually said, then ask exactly ONE relevant follow-up question in assistantMessage. ')+
        'Do not turn every response into a lecture or force collocations. Prioritise natural, context-appropriate language over complexity. '+
        'Assess only evidence in the latest learner turn. feedback should be concise and in Vietnamese. '+
        'collocationsUsed: list exact collocations genuinely used by learner, with a brief note on whether usage is natural. '+
