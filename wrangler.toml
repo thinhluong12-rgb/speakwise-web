@@ -5,11 +5,13 @@ compatibility_date = "2026-11-01"
 [assets]
 directory = "./public"
 binding = "ASSETS"
-run_worker_first = ["/evaluate", "/generate", "/hint", "/health", "/conversation", "/voice/session", "/voice/analyze"]
+run_worker_first = ["/evaluate", "/generate", "/hint", "/health", "/conversation", "/voice/session", "/voice/gemini-token", "/voice/analyze"]
 
 [vars]
 GEMINI_MODEL = "gemini-3.5-flash-lite"
 GEMINI_FALLBACK_MODEL = "gemini-3.8-flash"
+GEMINI_LIVE_MODEL = "gemini-3.8-live"
+GEMINI_LIVE_VOICE = "Aoede"
 SUPABASE_URL = "https://tfweuvvhzhkrmxxebqwp.supabase.co"
 SUPABASE_PUBLISHABLE_KEY = "sb_publishable_0URp8xiDy5xERjwh5X3zPg_kBOaUAV3"
 OPENAI_REALTIME_MODEL = "gpt-realtime-1.5"
