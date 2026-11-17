@@ -259,28 +259,49 @@
    $('swSyncControls').innerHTML='<p class="sw-sync-error">Thiếu cấu hình Supabase hoặc không tải được thư viện xác thực. Vui lòng kiểm tra config.js và kết nối mạng.</p>';
    $('swSyncClose').hidden=true;return;
   }
-  api=window.supabase.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey);
-  let sessionResult;
-  try{sessionResult=await api.auth.getSession();}
-  catch(e){sessionResult={error:e};}
-  if(sessionResult.error){
-   showDialog(true);
-   $('swSyncMessage').textContent='Không kiểm tra được trạng thái đăng nhập.';
-   $('swSyncControls').innerHTML='<p class="sw-sync-error">'+String(sessionResult.error.message||'Lỗi xác thực')+'</p><button class="btn btn-primary sw-sync-submit" id="swSyncRetry">Thử lại</button>';
-   $('swSyncClose').hidden=true;$('swSyncRetry').onclick=()=>location.reload();return;
-  }
-  user=sessionResult.data?.session?.user||null;
-  setGate(!user);
-  if(user){label('Tài khoản');await load();scheduleSave();}
-  else{label('Đăng nhập');showDialog(true);}
+
+  // Subscribe immediately: Supabase emits INITIAL_SESSION after it restores
+  // local storage or exchanges the OAuth callback code.
+  api=window.supabase.createClient(cfg.supabaseUrl,cfg.supabasePublishableKey,{
+   auth:{
+    persistSession:true,
+    autoRefreshToken:true,
+    detectSessionInUrl:true,
+    flowType:'pkce'
+   }
+  });
+
   api.auth.onAuthStateChange((event,session)=>{
-   const was=user?.id;user=session?.user||null;
-   if(event==='PASSWORD_RECOVERY'&&user){setGate(true);showPasswordRecovery();return;}
+   const previousId=user?.id||null;
+   user=session?.user||null;
+
+   if(event==='PASSWORD_RECOVERY'&&user){
+    setGate(true);
+    showPasswordRecovery();
+    return;
+   }
+
    if(user){
-    setGate(false);label('Tài khoản');
-    if(user.id!==was){const host=$('speakwiseSyncHost');if(host)host.classList.remove('open');load().then(scheduleSave);}
+    setGate(false);
+    label('Tài khoản');
+    if(user.id!==previousId){
+     const host=$('speakwiseSyncHost');
+     if(host)host.classList.remove('open');
+     // Do not call Supabase data APIs inside onAuthStateChange. Deferring
+     // avoids the auth-lock deadlock documented by Supabase.
+     setTimeout(()=>{load().then(scheduleSave);},0);
+    }
    }else{
-    setGate(true);label('Đăng nhập');showDialog(true);
+    setGate(true);
+    label('Đăng nhập');
+    if(event==='INITIAL_SESSION'||event==='SIGNED_OUT'){
+     showDialog(true);
+     const params=new URLSearchParams(location.search);
+     const authError=params.get('error_description')||params.get('error');
+     if(authError){
+      $('swSyncMessage').textContent='Không thể hoàn tất đăng nhập Google: '+authError;
+     }
+    }
    }
   });
  }
