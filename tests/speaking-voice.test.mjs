@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const worker = await readFile(new URL('../ai-worker.js', import.meta.url), 'utf8');
 const browser = await readFile(new URL('../public/speaking-voice.js', import.meta.url), 'utf8');
+const migration = await readFile(new URL('../supabase/migrations/20261117101500_secure_voice_session_creation_and_daily_quota.sql', import.meta.url), 'utf8');
 
 test('Voice endpoints require a server-verified adult account', () => {
   assert.match(worker, /app_metadata\?\.adult_verified\s*===\s*true/);
@@ -43,4 +44,13 @@ test('analysis rejects evidence and corrections absent from the learner transcri
   assert.match(worker, /learnerEvidence\.includes\(normalizeEvidence\(x\.quote\)\)/);
   assert.match(worker, /learnerEvidence\.includes\(normalizeEvidence\(x\.original\)\)/);
   assert.match(worker, /generated\.modelUsed/);
+});
+
+test('database quota RPC is invoker-secure and only executable by authenticated users', () => {
+  assert.match(migration, /security invoker/i);
+  assert.match(migration, /app_metadata.*adult_verified/s);
+  assert.match(migration, /pg_advisory_xact_lock/);
+  assert.match(migration, /v_count >= 5/);
+  assert.match(migration, /revoke all on function[\s\S]*from public/i);
+  assert.match(migration, /grant execute on function[\s\S]*to authenticated/i);
 });
