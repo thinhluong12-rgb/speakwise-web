@@ -1,9 +1,9 @@
 /**
  * Speakwise AI tutor API (Cloudflare Workers).
- * Optional secret: GEMINI_API_KEY. Workers AI binding is the regional fallback.
+ * Secrets: GEMINI_API_KEY (optional when Workers AI is available), OPENAI_API_KEY (Realtime voice).
  * AI estimates only. Never use API keys client-side.
  */
-const headers=(origin)=>({'content-type':'application/json; charset=utf-8','access-control-allow-origin':origin,'access-control-allow-headers':'content-type','access-control-allow-methods':'POST, OPTIONS','cache-control':'no-store','vary':'Origin','x-content-type-options':'nosniff'});
+const headers=(origin)=>({'content-type':'application/json; charset=utf-8','access-control-allow-origin':origin,'access-control-allow-headers':'content-type, authorization','access-control-allow-methods':'GET, POST, OPTIONS','cache-control':'no-store','vary':'Origin','x-content-type-options':'nosniff'});
 const reply=(value,status,origin)=>new Response(JSON.stringify(value),{status,headers:headers(origin)});
 const limit=(x,n=1400)=>String(x||'').slice(0,n);
 const describeAIError=err=>{
@@ -49,22 +49,191 @@ const workersAiTranscribe=async(env,audioBase64)=>{
  if(!transcript)throw new Error('Whisper không tạo được bản chép lời.');
  return transcript;
 };
+
+const verifySupabaseUser=async(req,env)=>{
+ const token=String(req.headers.get('authorization')||'').replace(/^Bearer\s+/i,'').trim();
+ if(!token||!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return null;
+ const response=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/auth/v1/user',{
+  headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+token}
+ });
+ if(!response.ok)return null;
+ const user=await response.json().catch(()=>null);
+ return user&&user.id?{id:user.id,adultVerified:user.app_metadata?.adult_verified===true}:null;
+};
+const sha256Hex=async(value)=>{
+ const bytes=new TextEncoder().encode(String(value));
+ const digest=await crypto.subtle.digest('SHA-256',bytes);
+ return Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,'0')).join('');
+};
+const voiceAnalysisPrompt=(topic,level,turns)=>{
+ const learnerTurns=turns.filter(t=>t.speaker==='user'&&t.status!=='partial'&&String(t.text||'').trim());
+ return 'You are a careful IELTS Speaking learning analyst. Analyse only the learner turns, using Coach AI turns as conversational context. Do not invent evidence. Topic: '+JSON.stringify(topic)+'. CEFR level: '+level+'. Full conversation: '+JSON.stringify(turns.map(t=>({speaker:t.speaker,text:limit(t.text,1200),occurred_at:t.occurred_at})))+'. Learner turns to assess: '+JSON.stringify(learnerTurns.map(t=>({text:limit(t.text,1200),occurred_at:t.occurred_at})))+'. '+
+ 'Do not provide an official IELTS band score or a precise numerical band. Separate observed evidence from interpretation. Assess Fluency and Coherence only cautiously from turn structure and transcript; transcript does not preserve all pauses, hesitation, rhythm or repair behaviour. Assess Lexical Resource and Grammatical Range and Accuracy using exact phrases from the learner transcript. Pronunciation MUST be marked not_assessed because no audio recording is supplied to this analysis endpoint. '+
+ 'For each assessable criterion provide status ("observed" or "insufficient_evidence"), summary, up to 3 evidence items with exact quote and interpretation, confidence ("low","medium","high"), and one next_action. Include overall_summary, strengths (max 4), priority_improvements (max 4), corrections (max 5 with original, suggested, explanation), and practice_plan (max 3). Keep feedback constructive, specific and appropriate for the stated CEFR level. Do not claim a pronunciation result. Return only JSON matching: {"overall_summary":string,"criteria":{"fluency_coherence":{"status":string,"summary":string,"evidence":[{"quote":string,"interpretation":string}],"confidence":string,"next_action":string},"lexical_resource":{...},"grammatical_range_accuracy":{...},"pronunciation":{"status":"not_assessed","summary":string,"evidence":[],"confidence":"none","next_action":string}},"strengths":[string],"priority_improvements":[string],"corrections":[{"original":string,"suggested":string,"explanation":string}],"practice_plan":[string]}';
+};
+const runVoiceAnalysis=async(env,prompt)=>{
+ let lastError='';
+ if(env.GEMINI_API_KEY){
+  const model=env.GEMINI_MODEL||'gemini-3.5-flash-lite';
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),22000);
+  try{
+   const response=await fetch('https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent',{
+    method:'POST',headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
+    body:JSON.stringify({contents:[{role:'user',parts:[{text:prompt}]}],generationConfig:{temperature:0.2,responseMimeType:'application/json',maxOutputTokens:2200}}),
+    signal:controller.signal
+   });
+   const data=await response.json().catch(()=>({}));
+   if(response.ok){
+    const raw=(data.candidates?.[0]?.content?.parts||[]).map(x=>x.text||'').join('').trim().replace(/^\x60{3}(?:json)?\s*/i,'').replace(/\s*\x60{3}$/,'');
+    try{return {report:JSON.parse(raw),modelUsed:'Gemini'}}catch(e){lastError='Gemini returned invalid JSON';}
+   }else lastError=limit(data?.error?.message||('Gemini HTTP '+response.status),220);
+  }catch(e){lastError=controller.signal.aborted?'Gemini analysis timed out':describeAIError(e)}
+  finally{clearTimeout(timer)}
+ }
+ if(env.AI?.run){
+  try{return {report:await workersAiJson(env,prompt,2200),modelUsed:'Cloudflare Workers AI'}}
+  catch(e){lastError=(lastError?lastError+'; ':'')+describeAIError(e)}
+ }
+ throw new Error(lastError||'No analysis provider is configured.');
+};
+
 export default {
  async fetch(req,env) {
   const url=new URL(req.url),path=url.pathname;
-  if(!['/evaluate','/health','/generate','/hint','/conversation'].includes(path)){return env.ASSETS?.fetch(req)||new Response('Not found',{status:404})}
+  if(!['/evaluate','/health','/generate','/hint','/conversation','/voice/session','/voice/analyze'].includes(path)){return env.ASSETS?.fetch(req)||new Response('Not found',{status:404})}
   const allowed=String(env.ALLOWED_ORIGIN||url.origin).replace(/\/$/,'');
   const incoming=req.headers.get('origin');
   if(incoming&&incoming!==allowed)return new Response('Origin not allowed',{status:403});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:headers(allowed)});
-  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY||!!env.AI?.run,providers:{gemini:!!env.GEMINI_API_KEY,workersAI:!!env.AI?.run},model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash',workersAIModel:WORKERS_AI_TEXT_MODEL},200,allowed);
-  if(!['/evaluate','/generate','/hint','/conversation'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
-  if(!env.GEMINI_API_KEY&&!env.AI?.run)return reply({error:'AI chưa được cấu hình: cần GEMINI_API_KEY hoặc Workers AI binding.'},503,allowed);
+  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY||!!env.AI?.run,voiceReady:!!env.OPENAI_API_KEY&&!!env.SUPABASE_URL&&!!env.SUPABASE_PUBLISHABLE_KEY,providers:{gemini:!!env.GEMINI_API_KEY,workersAI:!!env.AI?.run},model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash',workersAIModel:WORKERS_AI_TEXT_MODEL},200,allowed);
+  if(!['/evaluate','/generate','/hint','/conversation','/voice/session','/voice/analyze'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
+  if(path!=='/voice/session'&&!env.GEMINI_API_KEY&&!env.AI?.run)return reply({error:'AI chưa được cấu hình: cần GEMINI_API_KEY hoặc Workers AI binding.'},503,allowed);
   try{
    if(Number(req.headers.get('content-length')||0)>9e6)return reply({error:'Ghi âm quá lớn.'},413,allowed);
    const raw=await req.text();
    if(raw.length>9e6)return reply({error:'Yêu cầu quá lớn.'},413,allowed);
    let b;try{b=JSON.parse(raw)}catch{return reply({error:'JSON không hợp lệ.'},400,allowed)}
+
+
+   if(path==='/voice/session'){
+     if(!env.OPENAI_API_KEY)return reply({error:'Voice Mode chưa được cấu hình. Thiếu OPENAI_API_KEY trên Worker.'},503,allowed);
+     if(!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return reply({error:'Voice Mode chưa được cấu hình xác thực Supabase.'},503,allowed);
+     const user=await verifySupabaseUser(req,env);
+     if(!user)return reply({error:'Bạn cần đăng nhập SpeakWise trước khi bắt đầu Voice Mode.'},401,allowed);
+     if(!user.adultVerified)return reply({error:'Voice Mode hiện chỉ dành cho tài khoản đã được xác minh đủ 18 tuổi.'},403,allowed);
+     const topic=limit(b.topic,120).trim()||'Daily conversation';
+     const level=['A2','B1','B2','C1'].includes(String(b.level||'').toUpperCase())?String(b.level).toUpperCase():'B1';
+     const goals=(Array.isArray(b.learningGoals)?b.learningGoals:[]).slice(0,5).map(x=>limit(x,120).trim()).filter(Boolean);
+     const mode=['conversation','ielts_part_1','ielts_part_2','ielts_part_3'].includes(b.mode)?b.mode:'conversation';
+     const model=env.OPENAI_REALTIME_MODEL||'gpt-realtime-1.5';
+     const instructions='You are Coach AI in SpeakWise Speaking Lab. Have a natural, supportive but purposeful spoken English conversation. Topic: '+topic+'. Learner CEFR level: '+level+'. Session mode: '+mode+'. Learning goals: '+(goals.join('; ')||'develop ideas, speak clearly, and use natural English')+'. Ask one question at a time, listen carefully, respond concisely, and invite the learner to elaborate. Adapt vocabulary and question complexity to the stated level. Do not give an IELTS band score during the live conversation. Do not dominate the conversation or turn every reply into a lecture.';
+     const safetyIdentifier=await sha256Hex('speakwise:'+user.id);
+     const response=await fetch('https://api.openai.com/v1/realtime/client_secrets',{
+       method:'POST',
+       headers:{'content-type':'application/json','authorization':'Bearer '+env.OPENAI_API_KEY,'OpenAI-Safety-Identifier':safetyIdentifier},
+       body:JSON.stringify({
+         expires_after:{anchor:'created_at',seconds:60},
+         session:{
+           type:'realtime',
+           model,
+           instructions,
+           output_modalities:['audio','text'],
+           audio:{
+             input:{
+               transcription:{model:env.OPENAI_TRANSCRIPTION_MODEL||'gpt-4o-mini-transcribe',language:'en'},
+               turn_detection:{type:'server_vad',create_response:true,interrupt_response:true}
+             },
+             output:{voice:env.OPENAI_REALTIME_VOICE||'marin'}
+           }
+         }
+       })
+     });
+     const data=await response.json().catch(()=>({}));
+     if(!response.ok){
+       console.warn('SpeakWise Realtime session error',JSON.stringify({status:response.status,code:data?.error?.code||'unknown'}));
+       return reply({error:'Không thể tạo Realtime session.',detail:limit(data?.error?.message||('OpenAI HTTP '+response.status),220)},502,allowed);
+     }
+     const secret=data.value||data.client_secret?.value;
+     if(!secret)return reply({error:'OpenAI không trả về client secret hợp lệ.'},502,allowed);
+     const sessionResponse=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/rpc/start_speakwise_voice_session',{
+       method:'POST',
+       headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:String(req.headers.get('authorization')||''),'content-type':'application/json'},
+       body:JSON.stringify({p_topic:topic,p_cefr_level:level,p_learning_goals:goals,p_session_mode:mode})
+     });
+     const created=await sessionResponse.json().catch(()=>null);
+     if(!sessionResponse.ok){
+       const message=String(created?.message||created?.details||'');
+       if(message.includes('DAILY_VOICE_LIMIT'))return reply({error:'Bạn đã đạt giới hạn 5 phiên Voice Mode trong ngày. Hãy quay lại vào ngày mai.'},429,allowed);
+       if(sessionResponse.status===403)return reply({error:'Voice Mode chỉ dành cho tài khoản đã được xác minh đủ 18 tuổi.'},403,allowed);
+       console.warn('SpeakWise voice session insert failed',JSON.stringify({status:sessionResponse.status,code:created?.code||'unknown'}));
+       return reply({error:'Không thể tạo bản ghi buổi học Voice Mode.'},503,allowed);
+     }
+     const createdSessionId=typeof created==='string'?created:(created?.id||created?.session_id);
+     if(!createdSessionId)return reply({error:'Database did not return a Voice session ID.'},502,allowed);
+     return reply({clientSecret:secret,expiresAt:data.expires_at||data.client_secret?.expires_at||null,sessionId:createdSessionId,model},200,allowed);
+   }
+   if(path==='/voice/analyze'){
+     if(!env.SUPABASE_URL||!env.SUPABASE_PUBLISHABLE_KEY)return reply({error:'Thiếu cấu hình Supabase.'},503,allowed);
+     const user=await verifySupabaseUser(req,env);
+     if(!user)return reply({error:'Phiên đăng nhập không hợp lệ hoặc đã hết hạn.'},401,allowed);
+     if(!user.adultVerified)return reply({error:'Tính năng phân tích Voice Mode chỉ dành cho tài khoản đã được xác minh đủ 18 tuổi.'},403,allowed);
+     const sessionId=String(b.sessionId||'');
+     if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sessionId))return reply({error:'Session ID không hợp lệ.'},400,allowed);
+     const sessionResponse=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/speakwise_voice_sessions?id=eq.'+encodeURIComponent(sessionId)+'&select=id,owner_id,topic,cefr_level',{
+       headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+String(req.headers.get('authorization')||'')}
+     });
+     const sessions=await sessionResponse.json().catch(()=>[]);
+     if(!sessionResponse.ok||!Array.isArray(sessions)||!sessions.length||sessions[0].owner_id!==user.id)return reply({error:'Không tìm thấy buổi học hoặc bạn không có quyền truy cập.'},404,allowed);
+     const turnsResponse=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/speakwise_voice_turns?session_id=eq.'+encodeURIComponent(sessionId)+'&select=turn_id,speaker,text,status,occurred_at&order=turn_index.asc&limit=100',{
+       headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:'Bearer '+String(req.headers.get('authorization')||'')}
+     });
+     const storedTurns=await turnsResponse.json().catch(()=>[]);
+     if(!turnsResponse.ok||!Array.isArray(storedTurns))return reply({error:'Không thể tải transcript đã lưu để phân tích.'},503,allowed);
+     const turns=storedTurns.map(t=>({
+       speaker:t?.speaker==='assistant'?'assistant':'user',
+       text:limit(t?.text,12000),
+       status:['partial','final','interrupted'].includes(t?.status)?t.status:'final',
+       occurred_at:limit(t?.occurred_at,50)||new Date().toISOString(),
+       turn_id:limit(t?.turn_id,120)
+     })).filter(t=>t.text.trim());
+     if(!turns.some(t=>t.speaker==='user'&&t.status!=='partial'))return reply({error:'Chưa có câu trả lời đủ nội dung để phân tích.'},400,allowed);
+     const prompt=voiceAnalysisPrompt(sessions[0].topic,sessions[0].cefr_level,turns);
+     try{
+       const generated=await runVoiceAnalysis(env,prompt);
+       const report=generated?.report;
+       if(!report||typeof report!=='object'||Array.isArray(report))throw new Error('Analysis provider returned an invalid report structure.');
+       const criteria=report.criteria&&typeof report.criteria==='object'?report.criteria:{};
+       const normalizeEvidence=value=>String(value||'').toLowerCase().replace(/\\s+/g,' ').trim();
+       const learnerEvidence=normalizeEvidence(turns.filter(t=>t.speaker==='user'&&t.status!=='partial').map(t=>t.text).join(' '));
+       const cleanCriterion=c=>{
+         const evidence=(Array.isArray(c?.evidence)?c.evidence:[]).slice(0,3).map(x=>({quote:limit(x?.quote,300),interpretation:limit(x?.interpretation,350)}))
+           .filter(x=>x.quote&&normalizeEvidence(x.quote)&&learnerEvidence.includes(normalizeEvidence(x.quote)));
+         return {
+           status:evidence.length&&c?.status==='observed'?'observed':'insufficient_evidence',
+           summary:limit(c?.summary,700),
+           evidence,
+           confidence:evidence.length&&['low','medium','high'].includes(c?.confidence)?c.confidence:'low',
+           next_action:limit(c?.next_action,350)
+         };
+       };
+
+       report.criteria={
+         fluency_coherence:cleanCriterion(criteria.fluency_coherence),
+         lexical_resource:cleanCriterion(criteria.lexical_resource),
+         grammatical_range_accuracy:cleanCriterion(criteria.grammatical_range_accuracy),
+         pronunciation:{status:'not_assessed',summary:'Chưa đánh giá phát âm vì quy trình này chỉ nhận transcript, không phân tích tín hiệu âm thanh.',evidence:[],confidence:'none',next_action:'Cần một quy trình phân tích audio chuyên biệt trước khi đưa ra nhận xét phát âm.'}
+       };
+       report.overall_summary=limit(report.overall_summary,1200);
+       report.strengths=(Array.isArray(report.strengths)?report.strengths:[]).slice(0,4).map(x=>limit(x,300));
+       report.priority_improvements=(Array.isArray(report.priority_improvements)?report.priority_improvements:[]).slice(0,4).map(x=>limit(x,300));
+       report.corrections=(Array.isArray(report.corrections)?report.corrections:[]).slice(0,5).map(x=>({original:limit(x?.original,300),suggested:limit(x?.suggested,300),explanation:limit(x?.explanation,400)}))
+         .filter(x=>x.original&&x.suggested&&learnerEvidence.includes(normalizeEvidence(x.original)));
+       report.practice_plan=(Array.isArray(report.practice_plan)?report.practice_plan:[]).slice(0,3).map(x=>limit(x,400));
+       return reply({report,modelUsed:generated.modelUsed||'AI provider'},200,allowed);
+     }catch(error){
+       return reply({error:'Không thể tạo báo cáo Speaking.',detail:limit(error.message,260)},503,allowed);
+     }
+   }
 
    if(path==='/hint'){
      const phrase=limit(b.phrase,180).trim(),meaning=limit(b.meaning,240).trim();

@@ -1,0 +1,32 @@
+name: Speaking Lab Voice checks
+
+on:
+  pull_request:
+    paths:
+      - "ai-worker.js"
+      - "public/speaking-voice.js"
+      - "tests/speaking-voice.test.mjs"
+      - "supabase/migrations/**"
+      - ".github/workflows/speaking-voice-checks.yml"
+  push:
+    branches:
+      - main
+      - feature/speaking-lab-realtime
+  workflow_dispatch:
+
+jobs:
+  speaking-voice-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate JavaScript syntax
+        run: |
+          node --check ai-worker.js
+          node --check public/speaking-voice.js
+      - name: Run Voice Mode contract tests
+        run: node --test tests/speaking-voice.test.mjs
