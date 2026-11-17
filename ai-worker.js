@@ -1,6 +1,6 @@
 /**
  * Speakwise AI tutor API (Cloudflare Workers).
- * Optional secret: GEMINI_API_KEY. Workers AI binding is the regional fallback.
+ * Secrets: GEMINI_API_KEY (optional when Workers AI is available), OPENAI_API_KEY (Realtime voice).
  * AI estimates only. Never use API keys client-side.
  */
 const headers=(origin)=>({'content-type':'application/json; charset=utf-8','access-control-allow-origin':origin,'access-control-allow-headers':'content-type, authorization','access-control-allow-methods':'GET, POST, OPTIONS','cache-control':'no-store','vary':'Origin','x-content-type-options':'nosniff'});
@@ -105,7 +105,7 @@ export default {
   const incoming=req.headers.get('origin');
   if(incoming&&incoming!==allowed)return new Response('Origin not allowed',{status:403});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:headers(allowed)});
-  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY||!!env.AI?.run,providers:{gemini:!!env.GEMINI_API_KEY,workersAI:!!env.AI?.run},model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash',workersAIModel:WORKERS_AI_TEXT_MODEL},200,allowed);
+  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!env.GEMINI_API_KEY||!!env.AI?.run,voiceReady:!!env.OPENAI_API_KEY&&!!env.SUPABASE_URL&&!!env.SUPABASE_PUBLISHABLE_KEY,providers:{gemini:!!env.GEMINI_API_KEY,workersAI:!!env.AI?.run},model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash',workersAIModel:WORKERS_AI_TEXT_MODEL},200,allowed);
   if(!['/evaluate','/generate','/hint','/conversation','/voice/session','/voice/analyze'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
   if(path!=='/voice/session'&&!env.GEMINI_API_KEY&&!env.AI?.run)return reply({error:'AI chưa được cấu hình: cần GEMINI_API_KEY hoặc Workers AI binding.'},503,allowed);
   try{
