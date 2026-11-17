@@ -71,7 +71,7 @@
       ws.onopen=()=>ws.send(JSON.stringify({setup:{model:'models/'+(credential.model||'gemini-3.8-live'),generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:'Aoede'}}}},inputAudioTranscription:{},outputAudioTranscription:{},realtimeInputConfig:{automaticActivityDetection:{disabled:false},activityHandling:'START_OF_ACTIVITY_INTERRUPTS'}}}));
       ws.onmessage=message=>{let event;try{event=JSON.parse(message.data)}catch(_){return}onGeminiEvent(event);if(event.setupComplete&&!settled){settled=true;clearTimeout(timeout);resolve()}else if(event.error&&!settled){settled=true;clearTimeout(timeout);reject(Error(event.error.message||'Gemini Live setup failed.'))}};
       ws.onerror=()=>{if(!settled){settled=true;clearTimeout(timeout);reject(Error('Could not connect to Gemini Live. Check API key, model access and quota.'))}};
-      ws.onclose=()=>{if(!settled){settled=true;clearTimeout(timeout);reject(Error('Gemini Live connection closed during setup.'))}else if(s.status==='connected'){s.error='Gemini Live connection closed.';status('error','Disconnected');stage('Connection closed','End this session and start a new one.');attach()}};
+      ws.onclose=()=>{if(!settled){settled=true;clearTimeout(timeout);reject(Error('Gemini Live connection closed during setup.'))}else if(s.status==='connected'&&!s.busy){s.error='Gemini Live connection closed.';status('error','Disconnected');stage('Connection closed','End this session and start a new one.');attach()}};
     });
     const source=s.audioContext.createMediaStreamSource(stream),processor=s.audioContext.createScriptProcessor(4096,1,1);
     processor.onaudioprocess=event=>{
