@@ -1,6 +1,7 @@
 /**
  * Speakwise AI tutor API (Cloudflare Workers).
- * Required secret: GEMINI_API_KEY.
+ * /hint uses the Cloudflare Workers AI binding (env.AI).
+ * /evaluate and /generate still require the GEMINI_API_KEY secret.
  * AI estimates only. Never use API keys client-side.
  */
 const headers=(origin)=>({'content-type':'application/json; charset=utf-8','access-control-allow-origin':origin,'access-control-allow-headers':'content-type','access-control-allow-methods':'POST, OPTIONS','cache-control':'no-store','vary':'Origin','x-content-type-options':'nosniff'});
@@ -15,7 +16,7 @@ export default {
   const incoming=req.headers.get('origin');
   if(incoming&&incoming!==allowed)return new Response('Origin not allowed',{status:403});
   if(req.method==='OPTIONS')return new Response(null,{status:204,headers:headers(allowed)});
-  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!(env.AI||env.GEMINI_API_KEY),hintReady:!!(env.AI&&typeof env.AI.run==='function'),hintProvider:env.AI?'Cloudflare Workers AI':null,model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash'},200,allowed);
+  if(path==='/health'&&req.method==='GET')return reply({ok:true,aiReady:!!(env.AI||env.GEMINI_API_KEY),geminiReady:!!env.GEMINI_API_KEY,hintReady:!!(env.AI&&typeof env.AI.run==='function'),hintProvider:env.AI?'Cloudflare Workers AI':null,hintModel:env.HINT_MODEL||'@cf/google/gemma-4-26b-a4b-it',hintFallbackModel:env.HINT_FALLBACK_MODEL||'@cf/zai-org/glm-4.7-flash',model:env.GEMINI_MODEL||'gemini-3.5-flash-lite',fallbackModel:env.GEMINI_FALLBACK_MODEL||'gemini-3.8-flash'},200,allowed);
   if(!['/evaluate','/generate','/hint'].includes(path)||req.method!=='POST')return reply({error:'Method not allowed'},405,allowed);
   try{
    if(Number(req.headers.get('content-length')||0)>9e6)return reply({error:'Ghi âm quá lớn.'},413,allowed);
