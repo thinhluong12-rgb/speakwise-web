@@ -31,10 +31,14 @@ const workersAiJson=async(env,prompt,maxTokens=1800)=>{
  if(result?.success===false||Array.isArray(result?.errors)&&result.errors.length){
   throw new Error('Cloudflare Workers AI: '+describeAIError(result));
  }
+ // JSON Mode can return response as an object; non-JSON mode returns a string.
+ const structured=result&&typeof result==='object'&&result.response&&typeof result.response==='object'&&!Array.isArray(result.response)
+   ?result.response:null;
+ if(structured)return structured;
  const raw=typeof result==='string'?result:(typeof result?.response==='string'?result.response:result?.output_text||result?.text||'');
- if(!raw)throw new Error('Workers AI không trả về nội dung JSON. '+describeAIError(result));
- const clean=String(raw).trim().replace(/^```(?:json)?\s*/i,'').replace(/\s*```$/,'');
- try{return JSON.parse(clean)}catch(parseError){throw new Error('Workers AI trả về JSON không hợp lệ: '+describeAIError(parseError))}
+ if(!raw)throw new Error('Workers AI returned an unsupported response shape. '+describeAIError(result));
+ const clean=String(raw).trim().replace(/^```(?:json)?\\s*/i,'').replace(/\\s*```$/,'');
+ try{return JSON.parse(clean)}catch(parseError){throw new Error('Workers AI returned invalid JSON: '+describeAIError(parseError))}
 };
 const workersAiTranscribe=async(env,audioBase64)=>{
  if(!env.AI||typeof env.AI.run!=='function')throw new Error('Thiếu Workers AI binding (AI).');
