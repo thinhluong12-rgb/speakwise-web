@@ -127,3 +127,8 @@ test('voice migrations never call SQL syntax words as schema-qualified functions
   const files = (await readdir(dir)).filter(name => name.endsWith('.sql') && name > '20261117' && name !== fixName && name !== '20261123100000_self_declared_adult_confirmation.sql');
   assert.ok(files.length > 0);
 });
+
+test('Gemini Live frames are decoded from binary as well as text', () => {
+  assert.match(browser, /ws\.binaryType='arraybuffer'/);
+  assert.match(browser, /new TextDecoder\(\)\.decode\(raw\)/);
+});

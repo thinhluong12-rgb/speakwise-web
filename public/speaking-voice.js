@@ -65,11 +65,11 @@
     const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)throw Error('This browser does not support Web Audio.');
     s.audioContext=new AudioContextClass();await s.audioContext.resume();
     const url=(credential.websocketUrl||'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained')+'?access_token='+encodeURIComponent(credential.ephemeralToken);
-    const ws=new WebSocket(url);s.ws=ws;
+    const ws=new WebSocket(url);ws.binaryType='arraybuffer';s.ws=ws;
     await new Promise((resolve,reject)=>{
       let settled=false;const timeout=setTimeout(()=>{if(!settled){settled=true;reject(Error('Gemini Live connection timed out.'))}},15000);
       ws.onopen=()=>ws.send(JSON.stringify({setup:{model:'models/'+(credential.model||'gemini-3.8-live'),generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:'Aoede'}}}},inputAudioTranscription:{},outputAudioTranscription:{},realtimeInputConfig:{automaticActivityDetection:{disabled:false},activityHandling:'START_OF_ACTIVITY_INTERRUPTS'}}}));
-      ws.onmessage=message=>{let event;try{event=JSON.parse(message.data)}catch(_){return}onGeminiEvent(event);if(event.setupComplete&&!settled){settled=true;clearTimeout(timeout);resolve()}else if(event.error&&!settled){settled=true;clearTimeout(timeout);reject(Error(event.error.message||'Gemini Live setup failed.'))}};
+      ws.onmessage=message=>{let event;try{const raw=message.data;event=JSON.parse(typeof raw==='string'?raw:new TextDecoder().decode(raw))}catch(_){return}onGeminiEvent(event);if(event.setupComplete&&!settled){settled=true;clearTimeout(timeout);resolve()}else if(event.error&&!settled){settled=true;clearTimeout(timeout);reject(Error(event.error.message||'Gemini Live setup failed.'))}};
       ws.onerror=()=>{if(!settled){settled=true;clearTimeout(timeout);reject(Error('Could not connect to Gemini Live. Check API key, model access and quota.'))}};
       ws.onclose=()=>{if(!settled){settled=true;clearTimeout(timeout);reject(Error('Gemini Live connection closed during setup.'))}else if(s.status==='connected'&&!s.busy){s.error='Gemini Live connection closed.';status('error','Disconnected');stage('Connection closed','End this session and start a new one.');attach()}};
     });
