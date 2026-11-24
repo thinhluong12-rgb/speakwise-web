@@ -7,6 +7,7 @@ const browser = await readFile(new URL('../public/speaking-voice.js', import.met
 const migration = await readFile(new URL('../supabase/migrations/20261117094612_secure_voice_session_creation_and_daily_quota.sql', import.meta.url), 'utf8');
 const quotaSchemaMigration = await readFile(new URL('../supabase/migrations/20261117094920_harden_voice_session_creation.sql', import.meta.url), 'utf8');
 const quotaMigration = await readFile(new URL('../supabase/migrations/20261117094951_voice_quota_trigger_and_invoker_rpc.sql', import.meta.url), 'utf8');
+const ageMigration = await readFile(new URL('../supabase/migrations/20261123100000_self_declared_adult_confirmation.sql', import.meta.url), 'utf8');
 const rlsMigration = await readFile(new URL('../supabase/migrations/20261117095055_fix_voice_session_insert_policy_initplan.sql', import.meta.url), 'utf8');
 
 test('Voice endpoints require a server-verified adult account', () => {
@@ -91,4 +92,23 @@ test('saved session history is loaded through owner-scoped Supabase queries', ()
   assert.match(browser, /speakwise_voice_sessions'\)\.select\('id,topic,cefr_level,started_at,duration_seconds,analysis_status,analysis'\)/);
   assert.match(browser, /speakwise_voice_turns'\)\.select\('turn_id,turn_index,speaker,text,status,occurred_at'\)/);
   assert.match(browser, /\.limit\(8\)/);
+});
+
+test('adult confirmation is recorded only by a server-side function that never stores the birth date', () => {
+  assert.match(ageMigration, /create or replace function public\.speakwise_confirm_adult\(p_birth_date date, p_confirmed boolean\)/i);
+  assert.match(ageMigration, /security definer\s+set search_path = ''/i);
+  assert.match(ageMigration, /v_user_id uuid := auth\.uid\(\)/);
+  assert.match(ageMigration, /'adult_verified', true/);
+  assert.match(ageMigration, /under_18_declared/);
+  assert.match(ageMigration, /revoke all on function public\.speakwise_confirm_adult\(date, boolean\) from public, anon/i);
+  assert.match(ageMigration, /grant execute on function public\.speakwise_confirm_adult\(date, boolean\) to authenticated/i);
+  assert.doesNotMatch(ageMigration, /birth_date\s+date\s+not null|birth_date\s+date,\s*\n\s*status/i);
+  assert.match(ageMigration, /revoke all on table private\.speakwise_age_declarations from public, anon, authenticated, service_role/i);
+});
+
+test('browser confirms age through the RPC, refreshes the session and never writes the adult flag itself', () => {
+  assert.match(browser, /rpc\('speakwise_confirm_adult'/);
+  assert.match(browser, /auth\.refreshSession\(\)/);
+  assert.doesNotMatch(browser, /updateUser\(/);
+  assert.doesNotMatch(browser, /adult_verified\s*[:=]\s*true\s*[,}]/);
 });

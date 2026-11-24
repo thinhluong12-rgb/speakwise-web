@@ -35,7 +35,13 @@ The Worker requires:
 - An authenticated Supabase access token
 - user.app_metadata.adult_verified === true
 
-The adult-verification flag must be set only by a legitimate, server-controlled verification process. Do not use editable user_metadata for authorization. No self-service age override is implemented.
+The adult flag is only ever written on the server. Do not use editable user_metadata for authorization and never trust a browser-supplied age flag.
+
+Signed-in users confirm that they are 18+ through the database function `public.speakwise_confirm_adult(p_birth_date, p_confirmed)` (migration `20261123100000_self_declared_adult_confirmation.sql`):
+- The birth date is evaluated inside PostgreSQL and is never stored. Only the outcome is kept in `private.speakwise_age_declarations`; on success `app_metadata.adult_verified = true` plus `adult_verification_method = 'self_declared_birth_date'` and `adult_verified_at` are written to the account.
+- An account that declares itself under 18 is locked out of Voice Mode; retrying with another date has no effect.
+- This is a self-declaration, not identity verification. Standard Google Sign-In does not provide a trusted age claim. If stronger assurance is ever required, replace this function with a real age-assurance provider that sets the same flag.
+- The browser calls the function, then refreshes the session so the new `app_metadata` claim reaches the Worker, RPC, quota trigger and RLS policy, which all keep requiring the flag.
 
 The intended product audience is adults. If the product is ever opened to minors, reassess applicable child-safety, privacy, data-retention, moderation, and age-assurance requirements before enabling it.
 
