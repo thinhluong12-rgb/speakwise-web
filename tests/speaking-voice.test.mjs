@@ -112,3 +112,18 @@ test('browser confirms age through the RPC, refreshes the session and never writ
   assert.doesNotMatch(browser, /updateUser\(/);
   assert.doesNotMatch(browser, /adult_verified\s*[:=]\s*true\s*[,}]/);
 });
+
+test('age confirmation migration does not schema-qualify SQL constructs that are not functions', () => {
+  assert.doesNotMatch(ageMigration, /pg_catalog\.(coalesce|nullif|greatest|least)\(/i);
+});
+
+test('voice migrations never call SQL syntax words as schema-qualified functions', async () => {
+  const { readdir } = await import('node:fs/promises');
+  const dir = new URL('../supabase/migrations/', import.meta.url);
+  const fixName = '20261124040000_fix_voice_functions_builtin_calls.sql';
+  const fix = await readFile(new URL(fixName, dir), 'utf8');
+  assert.match(fix, /replace\(d, 'pg_catalog\.coalesce\(', 'coalesce\('\)/);
+  assert.match(fix, /replace\(d, 'pg_catalog\.trim\(', 'pg_catalog\.btrim\('\)/);
+  const files = (await readdir(dir)).filter(name => name.endsWith('.sql') && name > '20261117' && name !== fixName && name !== '20261123100000_self_declared_adult_confirmation.sql');
+  assert.ok(files.length > 0);
+});
