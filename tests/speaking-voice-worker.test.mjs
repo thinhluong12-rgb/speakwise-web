@@ -179,3 +179,47 @@ test('Gemini Live endpoint issues a short-lived constrained token for verified a
   assert.equal(body.model, 'gemini-3.8-live');
   assert.ok(calls.some(x => x.target.includes('/rpc/start_speakwise_voice_session')));
 });
+
+test('Gemini Live coach receives the learner\'s target collocations and natural-correction instructions', async t => {
+  let setup;
+  t.mock.method(globalThis, 'fetch', async (url, options = {}) => {
+    const target = String(url);
+    if (target.includes('/auth/v1/user')) return json({ id: 'verified-adult', app_metadata: { adult_verified: true } });
+    if (target.includes('generativelanguage.googleapis.com/v1alpha/auth_tokens')) {
+      setup = JSON.parse(options.body).bidiGenerateContentSetup;
+      return json({ name: 'ephemeral-test-token', expireTime: '2026-11-17T16:00:00Z' });
+    }
+    if (target.includes('/rpc/start_speakwise_voice_session')) return json('11111111-1111-4111-8111-111111111111');
+    throw new Error('Unexpected network request: ' + target);
+  });
+  const env = { ...baseEnv, GEMINI_API_KEY: 'gemini-test-placeholder' };
+  const many = Array.from({ length: 30 }, (_, i) => ({ phrase: 'filler phrase ' + i, meaning: 'meaning ' + i }));
+  const response = await worker.fetch(request('/voice/gemini-token', {
+    topic: 'Daily Life',
+    targetPhrases: [{ phrase: 'take a break', meaning: 'nghỉ ngơi' }, 'catch up on sleep', { phrase: '   ' }, 42, ...many]
+  }), env);
+  assert.equal(response.status, 200);
+  const text = setup.systemInstruction.parts[0].text;
+  assert.match(text, /NATURAL CORRECTIVE FEEDBACK/);
+  assert.match(text, /at most one correction per turn/i);
+  assert.match(text, /"take a break" \(nghỉ ngơi\)/);
+  assert.match(text, /"catch up on sleep"/);
+  assert.equal((text.match(/filler phrase/g) || []).length, 10, 'only the first 12 target entries are used (2 real + 10 filler)');
+});
+
+test('Gemini Live coach still works without a target list', async t => {
+  let setup;
+  t.mock.method(globalThis, 'fetch', async (url, options = {}) => {
+    const target = String(url);
+    if (target.includes('/auth/v1/user')) return json({ id: 'verified-adult', app_metadata: { adult_verified: true } });
+    if (target.includes('generativelanguage.googleapis.com/v1alpha/auth_tokens')) {
+      setup = JSON.parse(options.body).bidiGenerateContentSetup;
+      return json({ name: 'ephemeral-test-token' });
+    }
+    if (target.includes('/rpc/start_speakwise_voice_session')) return json('11111111-1111-4111-8111-111111111111');
+    throw new Error('Unexpected network request: ' + target);
+  });
+  const response = await worker.fetch(request('/voice/gemini-token', { topic: 'Food & Dining' }), { ...baseEnv, GEMINI_API_KEY: 'x' });
+  assert.equal(response.status, 200);
+  assert.match(setup.systemInstruction.parts[0].text, /No target list was supplied/);
+});

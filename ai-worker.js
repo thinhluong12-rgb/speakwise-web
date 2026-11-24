@@ -65,9 +65,22 @@ const sha256Hex=async(value)=>{
  const digest=await crypto.subtle.digest('SHA-256',bytes);
  return Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,'0')).join('');
 };
-const voiceAnalysisPrompt=(topic,level,turns)=>{
+const cleanTargetPhrases=value=>(Array.isArray(value)?value:[]).slice(0,50)
+ .map(x=>typeof x==='string'?{phrase:x,meaning:''}:{phrase:x?.phrase,meaning:x?.meaning})
+ .map(x=>({phrase:limit(x.phrase,80).replace(/\s+/g,' ').trim(),meaning:limit(x.meaning,120).replace(/\s+/g,' ').trim()}))
+ .filter(x=>x.phrase).slice(0,12);
+const coachInstructions=({topic,level,mode,goals,targets})=>{
+ const targetList=(targets||[]).map(t=>'"'+t.phrase.replace(/"/g,"'")+'"'+(t.meaning?' ('+t.meaning.replace(/"/g,"'")+')':'')).join('; ');
+ return 'You are Coach AI in SpeakWise Speaking Lab, a warm, encouraging spoken-English coach. Topic: '+topic+'. Learner CEFR level: '+level+'. Session mode: '+mode+'. Learning goals: '+(goals.join('; ')||'develop ideas, speak clearly, and use natural English')+'. '+
+ 'CONVERSATION STYLE: Have a natural conversation. Ask one question at a time, keep each reply short (2 to 4 spoken sentences), adapt vocabulary and question difficulty to the stated level, and invite the learner to elaborate. Never lecture, never stop the learner mid-thought, and do not give an IELTS band score or any numerical score during the live conversation. Do not comment on pronunciation. Speak in clear, natural English. '+
+ 'NATURAL CORRECTIVE FEEDBACK: Listen closely to what the learner says. When they use a word combination that is unnatural, inaccurate or awkward, give ONE gentle correction in that same turn: briefly offer the more natural way to say it, for example by saying "We usually say ..." or "A more natural way is ...", then continue the conversation with your next question. Give at most one correction per turn, choose the one that matters most for the learner\'s meaning, and ignore tiny slips that do not affect understanding. If the learner\'s sentence is already natural, acknowledge that briefly and specifically. '+
+ (targetList?
+ 'TARGET COLLOCATIONS: The learner chose to practise these collocations from their SpeakWise topic: '+targetList+'. Use them to guide your coaching. (1) Weave one or two target collocations naturally into your own questions and comments so the learner hears them in context. (2) When the learner could naturally have used a target collocation, suggest it, for example "You could also say ...", and invite them to try a new sentence with it. (3) When the learner uses a target collocation correctly, notice it with brief, specific praise. Introduce at most one new target collocation per turn and only when it fits the conversation; never read the whole list out. Do not invent meanings: if you are unsure how a target is used, model it in a simple example.'
+ :'TARGET COLLOCATIONS: No target list was supplied, so coach general natural collocations that fit the topic.');
+};
+const voiceAnalysisPrompt=(topic,level,turns,targets=[])=>{
  const learnerTurns=turns.filter(t=>t.speaker==='user'&&t.status!=='partial'&&String(t.text||'').trim());
- return 'You are a careful IELTS Speaking learning analyst. Analyse only the learner turns, using Coach AI turns as conversational context. Do not invent evidence. Topic: '+JSON.stringify(topic)+'. CEFR level: '+level+'. Full conversation: '+JSON.stringify(turns.map(t=>({speaker:t.speaker,text:limit(t.text,1200),occurred_at:t.occurred_at})))+'. Learner turns to assess: '+JSON.stringify(learnerTurns.map(t=>({text:limit(t.text,1200),occurred_at:t.occurred_at})))+'. '+
+ return 'You are a careful IELTS Speaking learning analyst. Analyse only the learner turns, using Coach AI turns as conversational context. Do not invent evidence. Topic: '+JSON.stringify(topic)+'. CEFR level: '+level+'. Full conversation: '+JSON.stringify(turns.map(t=>({speaker:t.speaker,text:limit(t.text,1200),occurred_at:t.occurred_at})))+'. Learner turns to assess: '+JSON.stringify(learnerTurns.map(t=>({text:limit(t.text,1200),occurred_at:t.occurred_at})))+'. '+(targets.length?'The learner chose these SpeakWise target collocations to practise: '+JSON.stringify(targets)+'. In the lexical_resource summary and next_action, say which targets the learner used correctly (quote the exact words from the transcript) and which targets could naturally improve their answers. Never claim a target was used if it does not appear in the learner transcript. ':'')+
  'Do not provide an official IELTS band score or a precise numerical band. Separate observed evidence from interpretation. Assess Fluency and Coherence only cautiously from turn structure and transcript; transcript does not preserve all pauses, hesitation, rhythm or repair behaviour. Assess Lexical Resource and Grammatical Range and Accuracy using exact phrases from the learner transcript. Pronunciation MUST be marked not_assessed because no audio recording is supplied to this analysis endpoint. '+
  'For each assessable criterion provide status ("observed" or "insufficient_evidence"), summary, up to 3 evidence items with exact quote and interpretation, confidence ("low","medium","high"), and one next_action. Include overall_summary, strengths (max 4), priority_improvements (max 4), corrections (max 5 with original, suggested, explanation), and practice_plan (max 3). Keep feedback constructive, specific and appropriate for the stated CEFR level. Do not claim a pronunciation result. Return only JSON matching: {"overall_summary":string,"criteria":{"fluency_coherence":{"status":string,"summary":string,"evidence":[{"quote":string,"interpretation":string}],"confidence":string,"next_action":string},"lexical_resource":{...},"grammatical_range_accuracy":{...},"pronunciation":{"status":"not_assessed","summary":string,"evidence":[],"confidence":"none","next_action":string}},"strengths":[string],"priority_improvements":[string],"corrections":[{"original":string,"suggested":string,"explanation":string}],"practice_plan":[string]}';
 };
@@ -126,7 +139,8 @@ export default {
      const goals=(Array.isArray(b.learningGoals)?b.learningGoals:[]).slice(0,5).map(x=>limit(x,120).trim()).filter(Boolean);
      const mode=['conversation','ielts_part_1','ielts_part_2','ielts_part_3'].includes(b.mode)?b.mode:'conversation';
      const model=env.GEMINI_LIVE_MODEL||'gemini-3.8-live';
-     const instructions='You are Coach AI in SpeakWise Speaking Lab. Have a natural, supportive but purposeful spoken English conversation. Topic: '+topic+'. Learner CEFR level: '+level+'. Session mode: '+mode+'. Learning goals: '+(goals.join('; ')||'develop ideas, speak clearly, and use natural English')+'. Ask one question at a time, listen carefully, respond concisely, and invite the learner to elaborate. Adapt vocabulary and question complexity to the stated level. Do not give an IELTS band score during the live conversation. Do not dominate the conversation or turn every reply into a lecture. Speak in clear, natural English.';
+     const targets=cleanTargetPhrases(b.targetPhrases);
+     const instructions=coachInstructions({topic,level,mode,goals,targets});
      const now=Date.now();
      const setup={
        model:'models/'+model,
@@ -175,7 +189,8 @@ export default {
      const goals=(Array.isArray(b.learningGoals)?b.learningGoals:[]).slice(0,5).map(x=>limit(x,120).trim()).filter(Boolean);
      const mode=['conversation','ielts_part_1','ielts_part_2','ielts_part_3'].includes(b.mode)?b.mode:'conversation';
      const model=env.OPENAI_REALTIME_MODEL||'gpt-realtime-1.5';
-     const instructions='You are Coach AI in SpeakWise Speaking Lab. Have a natural, supportive but purposeful spoken English conversation. Topic: '+topic+'. Learner CEFR level: '+level+'. Session mode: '+mode+'. Learning goals: '+(goals.join('; ')||'develop ideas, speak clearly, and use natural English')+'. Ask one question at a time, listen carefully, respond concisely, and invite the learner to elaborate. Adapt vocabulary and question complexity to the stated level. Do not give an IELTS band score during the live conversation. Do not dominate the conversation or turn every reply into a lecture.';
+     const targets=cleanTargetPhrases(b.targetPhrases);
+     const instructions=coachInstructions({topic,level,mode,goals,targets});
      const safetyIdentifier=await sha256Hex('speakwise:'+user.id);
      const response=await fetch('https://api.openai.com/v1/realtime/client_secrets',{
        method:'POST',
@@ -246,7 +261,7 @@ export default {
        turn_id:limit(t?.turn_id,120)
      })).filter(t=>t.text.trim());
      if(!turns.some(t=>t.speaker==='user'&&t.status!=='partial'))return reply({error:'Chưa có câu trả lời đủ nội dung để phân tích.'},400,allowed);
-     const prompt=voiceAnalysisPrompt(sessions[0].topic,sessions[0].cefr_level,turns);
+     const prompt=voiceAnalysisPrompt(sessions[0].topic,sessions[0].cefr_level,turns,cleanTargetPhrases(b.targetPhrases));
      try{
        const generated=await runVoiceAnalysis(env,prompt);
        const report=generated?.report;

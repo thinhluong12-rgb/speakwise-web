@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
+const indexHtml = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
 const worker = await readFile(new URL('../ai-worker.js', import.meta.url), 'utf8');
 const browser = await readFile(new URL('../public/speaking-voice.js', import.meta.url), 'utf8');
 const migration = await readFile(new URL('../supabase/migrations/20261117094612_secure_voice_session_creation_and_daily_quota.sql', import.meta.url), 'utf8');
@@ -131,4 +132,22 @@ test('voice migrations never call SQL syntax words as schema-qualified functions
 test('Gemini Live frames are decoded from binary as well as text', () => {
   assert.match(browser, /ws\.binaryType='arraybuffer'/);
   assert.match(browser, /new TextDecoder\(\)\.decode\(raw\)/);
+});
+
+test('Speaking Lab no longer shows consent, recent sessions, starters, principle, mute or interrupt controls', () => {
+  for (const text of ['Before you begin', 'swvConsent', 'Recent sessions', 'Mute microphone', 'Interrupt Coach AI', 'data-swv="mute"', 'data-swv="interrupt"']) {
+    assert.ok(!browser.includes(text), 'voice room must not contain: ' + text);
+  }
+  for (const text of ['Try a conversation starter', 'Learning principle']) {
+    assert.ok(!indexHtml.includes(text), 'Speaking Lab page must not contain: ' + text);
+  }
+  assert.match(indexHtml, /How your coach helps/);
+});
+
+test('the topic collocations are sent to the coach and to the report', () => {
+  assert.match(indexHtml, /window\.SpeakwiseSpeaking=\{targets:speakingTargetPhrases\}/);
+  assert.match(browser, /targetPhrases/);
+  assert.match(browser, /post\('\/voice\/analyze',\{sessionId:s\.dbId,targetPhrases:s\.targets\|\|\[\]\}\)/);
+  assert.match(worker, /const coachInstructions=/);
+  assert.match(worker, /cleanTargetPhrases\(b\.targetPhrases\)/);
 });

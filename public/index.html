@@ -1538,6 +1538,18 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     'Hobbies & Free Time','Family & Relationships','IELTS Speaking Part 1','IELTS Speaking Part 2',
     'IELTS Speaking Part 3','Education','Environment & Society'
   ];
+  function speakingTargetPhrases(topicName,max=12){
+    const norm=x=>String(x||'').toLowerCase().replace(/&/g,' and ').replace(/[^a-z0-9]+/g,' ').trim();
+    const wanted=norm(topicName);
+    const topicIds=(store.topics||[]).filter(t=>{const n=norm(t.name);return n&&wanted&&(n===wanted||n.includes(wanted)||wanted.includes(n))}).map(t=>t.id);
+    let pool=topicIds.length?store.entries.filter(e=>topicIds.includes(e.topicId)):[];
+    if(!pool.length&&Array.isArray(ui.labIds)&&ui.labIds.length){const ids=new Set(ui.labIds);pool=store.entries.filter(e=>ids.has(e.id))}
+    if(!pool.length)pool=store.entries.slice();
+    const rank=e=>{const st=stageOf(e.id);return st==='new'?0:st==='recognised'?1:st==='recalled'?2:3};
+    return pool.map((e,i)=>({e,i,r:rank(e)})).sort((a,b)=>a.r-b.r||a.i-b.i).slice(0,max)
+      .map(({e})=>({phrase:String(e.phrase||'').slice(0,80),meaning:String(e.meaning||'').slice(0,120)})).filter(x=>x.phrase);
+  }
+  window.SpeakwiseSpeaking={targets:speakingTargetPhrases};
   function speakingLabPage(){
     const messages=ui.speakingMessages||[];
     const messageHtml=messages.map((m,i)=>{
@@ -1571,10 +1583,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       '</div><div class="sw-sl-actions-right">'+(audioReady?'<button class="btn btn-muted" type="button" data-action="discardSpeakingAudio">Discard audio</button><button class="btn btn-primary" type="button" data-action="sendSpeakingAudio">'+icon('arrowRight')+' Send recording</button>':'')+
       '<button class="btn btn-primary" type="submit" '+(ui.speakingBusy||ui.recording?'disabled':'')+'>'+icon('arrowRight')+' Send</button></div></div></form>'+
       '<div class="sw-sl-note">Microphone input is transcribed with Whisper. AI feedback focuses on language use; it is not an official IELTS score.</div></div>':'')+'</section>'+
-      '<aside class="sw-sl-side"><article class="sw-sl-side-card"><h3>'+icon('lightbulb')+' How your coach helps</h3><p>Get feedback on natural collocations, awkward word combinations and more precise ways to express your ideas. Then continue the conversation.</p></article>'+
-      '<article class="sw-sl-side-card"><h3>'+icon('users')+' Try a conversation starter</h3><p>Choose a prompt to get started. You can answer in your own words.</p><div class="sw-sl-starter">'+
-      ['What do you usually do to unwind after a busy day?','Tell me about a meal you really enjoyed.','What makes a workplace enjoyable?'].map((x,i)=>'<button type="button" data-action="speakingStarter" data-prompt="'+esc(x)+'">'+['Daily routine','Food & dining','Work & study'][i]+'</button>').join('')+
-      '</div></article><article class="sw-sl-side-card"><h3>'+icon('target')+' Learning principle</h3><p>Natural and appropriate language matters more than using as many advanced expressions as possible. Your coach will not penalise simple but accurate English.</p></article></aside></div></section>';
+      '<aside class="sw-sl-side"><article class="sw-sl-side-card"><h3>'+icon('lightbulb')+' How your coach helps</h3><p>Get feedback on natural collocations, awkward word combinations and more precise ways to express your ideas. Then continue the conversation.</p></article></aside></div></section>';
   }
   function render(){document.getElementById('appShell')?.classList.toggle('sw-focus-mode',ui.focusMode);sidebar();header();document.getElementById('pageContent').innerHTML=ui.view==='home'?home():ui.view==='topics'?library():ui.view==='speakingLab'?speakingLabPage():ui.view==='flashcards'?flashcards():ui.view==='review'?reviewLab():ui.view==='mistakes'?mistakesPage():ui.view==='journey'?renderJourney():quiz();if(ui.view==='topics'&&ui.topic!=='all')libraryTable();renderIcons();}
   function openDrawer(id){const e=store.entries.find(e=>e.id===id);if(!e)return;ui.drawer=id;const t=topic(e.topicId)||{};const p=progress(id);document.getElementById('drawerHost').innerHTML=`<div class="drawer-overlay" data-action="closeDrawer"></div><div class="drawer" role="dialog" aria-modal="true" aria-label="Thông tin collocation"><div class="drawer-head"><span class="eyebrow">COLLOCATION DETAILS</span><button class="icon-button" data-action="closeDrawer" aria-label="Đóng">${icon('close')}</button></div><div class="drawer-body"><div class="drawer-kicker">${esc(t.name||'Topic Collocations')}</div><h2 class="drawer-phrase">${esc(e.phrase)}</h2>${e.ipa?`<div class="drawer-ipa">${esc(e.ipa)}</div>`:''}<div style="display:flex;gap:8px;margin-top:14px"><button class="btn btn-light-green" data-action="speak" data-id="${esc(id)}">${icon('volume')} Nghe phát âm</button><button class="btn btn-muted" data-action="star" data-id="${esc(id)}">${icon('star')} ${p.starred?'Bỏ yêu thích':'Yêu thích'}</button></div><div class="drawer-info"><div class="drawer-info-label">${icon('bookOpen')} Nghĩa tiếng Việt</div><p>${esc(e.meaning)}</p></div><div class="drawer-info"><div class="drawer-info-label">${icon('sparkles')} Ví dụ sử dụng</div><div class="example-block">${esc(e.example)}</div></div>${e.note?`<div class="drawer-info"><div class="drawer-info-label">${icon('lightbulb')} Lưu ý dùng từ</div><p>${esc(e.note)}</p></div>`:''}<div class="drawer-info"><div class="drawer-info-label">${icon('clock')} Tiến độ học</div><p>${p.level?`Đã ôn ${p.reviews||1} lần · Ôn tiếp: ${esc(p.nextReview||'Chưa xác định')}`:'Chưa ôn tập'} </p><p class="muted-small" style="margin-top:7px">Nguồn: ${esc(e.source||'Thư viện cá nhân')} · Ngày thêm: ${esc(e.addedAt||'Chưa rõ')}</p></div><div class="drawer-footer"><button class="btn btn-muted" data-action="edit" data-id="${esc(id)}">${icon('edit')} Chỉnh sửa</button><button class="btn btn-danger" data-action="delete" data-id="${esc(id)}">${icon('trash')} Xoá</button><button class="btn btn-primary" data-action="closeDrawer">Đóng</button></div></div></div>`;}
@@ -1950,6 +1959,6 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
 })();
 
 </script>
-  <script src="/speaking-voice.js?v=2"></script>
+  <script src="/speaking-voice.js?v=3"></script>
 </body>
 </html>
