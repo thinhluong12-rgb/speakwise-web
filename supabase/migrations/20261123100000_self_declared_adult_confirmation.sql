@@ -41,7 +41,7 @@ begin
   -- Already confirmed: idempotent, makes sure the flag is present.
   if v_status = 'adult_declared' then
     update auth.users
-    set raw_app_meta_data = pg_catalog.coalesce(raw_app_meta_data, '{}'::jsonb)
+    set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
       || pg_catalog.jsonb_build_object('adult_verified', true)
     where id = v_user_id;
     return pg_catalog.jsonb_build_object('status', 'verified');
@@ -64,7 +64,7 @@ begin
   on conflict (owner_id) do update set status = 'adult_declared', declared_at = pg_catalog.now();
 
   update auth.users
-  set raw_app_meta_data = pg_catalog.coalesce(raw_app_meta_data, '{}'::jsonb)
+  set raw_app_meta_data = coalesce(raw_app_meta_data, '{}'::jsonb)
     || pg_catalog.jsonb_build_object(
       'adult_verified', true,
       'adult_verification_method', 'self_declared_birth_date',
