@@ -155,11 +155,12 @@ test('Gemini Live endpoint issues a short-lived constrained token for verified a
     }
     if (target.includes('generativelanguage.googleapis.com/v1alpha/auth_tokens')) {
       const payload = JSON.parse(options.body);
-      assert.equal(payload.authToken.uses, 1);
-      assert.equal(payload.authToken.bidiGenerateContentSetup.model, 'models/gemini-3.8-live');
-      assert.deepEqual(payload.authToken.bidiGenerateContentSetup.generationConfig.responseModalities, ['AUDIO']);
-      assert.ok(payload.authToken.bidiGenerateContentSetup.inputAudioTranscription);
-      assert.ok(payload.authToken.bidiGenerateContentSetup.outputAudioTranscription);
+      assert.equal(payload.authToken, undefined, 'Gemini auth_tokens expects the token fields at the top level');
+      assert.equal(payload.uses, 1);
+      assert.equal(payload.bidiGenerateContentSetup.model, 'models/gemini-3.8-live');
+      assert.deepEqual(payload.bidiGenerateContentSetup.generationConfig.responseModalities, ['AUDIO']);
+      assert.ok(payload.bidiGenerateContentSetup.inputAudioTranscription);
+      assert.ok(payload.bidiGenerateContentSetup.outputAudioTranscription);
       assert.equal(options.headers['x-goog-api-key'], 'gemini-test-placeholder');
       return json({ name: 'ephemeral-test-token', expireTime: '2026-11-17T16:00:00Z' });
     }

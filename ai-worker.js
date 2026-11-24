@@ -139,7 +139,7 @@ export default {
      const tokenResponse=await fetch('https://generativelanguage.googleapis.com/v1alpha/auth_tokens',{
        method:'POST',
        headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
-       body:JSON.stringify({authToken:{uses:1,expireTime:new Date(now+25*60*1000).toISOString(),newSessionExpireTime:new Date(now+60*1000).toISOString(),bidiGenerateContentSetup:setup}})
+       body:JSON.stringify({uses:1,expireTime:new Date(now+25*60*1000).toISOString(),newSessionExpireTime:new Date(now+60*1000).toISOString(),bidiGenerateContentSetup:setup})
      });
      const tokenData=await tokenResponse.json().catch(()=>({}));
      if(!tokenResponse.ok||!tokenData.name){
