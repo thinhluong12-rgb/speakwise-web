@@ -142,7 +142,8 @@ test('Speaking Lab no longer shows consent, recent sessions, starters, principle
   for (const text of ['Try a conversation starter', 'Learning principle']) {
     assert.ok(!indexHtml.includes(text), 'Speaking Lab page must not contain: ' + text);
   }
-  assert.match(indexHtml, /How your coach helps/);
+  assert.ok(!indexHtml.includes('How your coach helps'), 'the right-hand card was replaced by the collocation list');
+  assert.match(indexHtml, /Collocations Coach AI will help you use/);
 });
 
 test('the topic collocations are sent to the coach and to the report', () => {
@@ -170,4 +171,50 @@ test('browser keeps a Gemini conversation alive by reconnecting with the resumpt
   assert.match(browser, /resumeSessionId:s\.dbId,resumptionHandle:s\.resumeHandle/);
   assert.match(browser, /if\(!s\.started\)\{s\.started=Date\.now\(\)/, 'a reconnect must not restart the session clock');
   assert.match(browser, /s\.ws===ws&&s\.status==='connected'&&!s\.busy/);
+});
+
+test('Collocations Coach AI will help you use follows the selected Conversation topic', () => {
+  const seedStart = indexHtml.indexOf('window.SPEAKING_SEED');
+  const jsonStart = indexHtml.indexOf('=', seedStart) + 1;
+  const seed = JSON.parse(indexHtml.slice(jsonStart, indexHtml.indexOf('</script>', jsonStart)).trim().replace(/;$/, ''));
+  assert.equal(seed.topics.length, 9);
+
+  const fnStart = indexHtml.indexOf('function speakingTargetPhrases');
+  const fnEnd = indexHtml.indexOf('window.SpeakwiseSpeaking=', fnStart);
+  const cardStart = indexHtml.indexOf('function speakingTargetsCard');
+  const cardEnd = indexHtml.indexOf('function speakingLabPage', cardStart);
+  const store = { topics: seed.topics, entries: seed.entries };
+  const ui = { labIds: [], speakingTopic: seed.topics[0].name };
+  const api = new Function('store', 'ui', 'stageOf', 'esc', 'icon',
+    indexHtml.slice(fnStart, fnEnd) + indexHtml.slice(cardStart, cardEnd) + ';return { speakingTargetPhrases, speakingTargetsCard };')(
+    store, ui, () => 'new', x => String(x), () => '');
+
+  for (const topic of seed.topics) {
+    const expected = seed.entries.filter(e => e.topicId === topic.id).map(e => e.phrase).slice(0, 12);
+    const got = api.speakingTargetPhrases(topic.name).map(x => x.phrase);
+    assert.deepEqual(got, expected, 'collocations for ' + topic.name);
+    ui.speakingTopic = topic.name;
+    const html = api.speakingTargetsCard();
+    assert.match(html, /Collocations Coach AI will help you use/);
+    assert.ok(html.includes('Topic: <strong>' + topic.name + '</strong>'));
+    for (const phrase of expected) assert.ok(html.includes('<strong>' + phrase + '</strong>'), phrase + ' listed for ' + topic.name);
+  }
+  const work = api.speakingTargetPhrases('Work & Business').map(x => x.phrase);
+  const family = api.speakingTargetPhrases('Family & Relationships').map(x => x.phrase);
+  assert.ok(work.length && family.length);
+  assert.equal(work.filter(x => family.includes(x)).length, 0, 'different topics show different collocations');
+});
+
+test('the Conversation topic dropdown lists the web topics and the page reads the selected topic', () => {
+  assert.match(indexHtml, /const speakingTopicNames=\(\)=>/);
+  assert.match(indexHtml, /<select id="slTopic">'\+speakingTopicNames\(\)\.map/);
+  assert.match(indexHtml, /if\(e\.target\.id==='slTopic'&&ui\.speakingTopic!==e\.target\.value\)\{ui\.speakingTopic=e\.target\.value;[^}]*render\(\)\}/);
+  assert.match(indexHtml, /<aside class="sw-sl-side">'\+speakingTargetsCard\(\)\+'<\/aside>/);
+});
+
+test('Topic Collocations and Speaking Lab use larger type', () => {
+  assert.match(indexHtml, /v4\.7 readability: Topic Collocations and Speaking Lab/);
+  assert.match(indexHtml, /\.library-table \.phrase-cell\{font-size:19px/);
+  assert.match(indexHtml, /\.sw-sl-bubble\{font-size:18px/);
+  assert.match(indexHtml, /\.sw-sl-target-list strong\{font-size:18px/);
 });
