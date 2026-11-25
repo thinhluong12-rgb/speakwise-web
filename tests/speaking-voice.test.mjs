@@ -9,6 +9,7 @@ const migration = await readFile(new URL('../supabase/migrations/20261117094612_
 const quotaSchemaMigration = await readFile(new URL('../supabase/migrations/20261117094920_harden_voice_session_creation.sql', import.meta.url), 'utf8');
 const quotaMigration = await readFile(new URL('../supabase/migrations/20261117094951_voice_quota_trigger_and_invoker_rpc.sql', import.meta.url), 'utf8');
 const ageMigration = await readFile(new URL('../supabase/migrations/20261123100000_self_declared_adult_confirmation.sql', import.meta.url), 'utf8');
+const capsMigration = await readFile(new URL('../supabase/migrations/20261124080000_remove_voice_daily_and_duration_caps.sql', import.meta.url), 'utf8');
 const rlsMigration = await readFile(new URL('../supabase/migrations/20261117095055_fix_voice_session_insert_policy_initplan.sql', import.meta.url), 'utf8');
 
 test('Voice endpoints require a server-verified adult account', () => {
@@ -20,7 +21,7 @@ test('Voice endpoints require a server-verified adult account', () => {
 
 test('session creation is adult-gated and concurrency-safe in the database', () => {
   assert.match(worker, /rpc\/start_speakwise_voice_session/);
-  assert.match(worker, /DAILY_VOICE_LIMIT/);
+  assert.doesNotMatch(worker, /DAILY_VOICE_LIMIT/, 'the application no longer caps sessions per day');
 });
 
 test('browser uses WebRTC and never receives the standard API key', () => {
@@ -150,4 +151,23 @@ test('the topic collocations are sent to the coach and to the report', () => {
   assert.match(browser, /post\('\/voice\/analyze',\{sessionId:s\.dbId,targetPhrases:s\.targets\|\|\[\]\}\)/);
   assert.match(worker, /const coachInstructions=/);
   assert.match(worker, /cleanTargetPhrases\(b\.targetPhrases\)/);
+});
+
+test('voice sessions are not capped by the app: no daily limit, no duration limit, only Gemini limits apply', () => {
+  assert.doesNotMatch(capsMigration, /DAILY_VOICE_LIMIT/);
+  assert.doesNotMatch(capsMigration, />=\s*5\b/);
+  assert.match(capsMigration, /check \(session_count >= 0\)/);
+  assert.match(capsMigration, /duration_seconds <= 86400/);
+  assert.match(capsMigration, /VOICE_OWNER_MISMATCH/);
+  assert.match(capsMigration, /ADULT_VERIFICATION_REQUIRED/);
+  assert.doesNotMatch(browser, /Session time limit reached/);
+  assert.doesNotMatch(browser, /\?720:1200/);
+});
+
+test('browser keeps a Gemini conversation alive by reconnecting with the resumption handle', () => {
+  assert.match(browser, /sessionResumptionUpdate/);
+  assert.match(browser, /const reconnectGemini=/);
+  assert.match(browser, /resumeSessionId:s\.dbId,resumptionHandle:s\.resumeHandle/);
+  assert.match(browser, /if\(!s\.started\)\{s\.started=Date\.now\(\)/, 'a reconnect must not restart the session clock');
+  assert.match(browser, /s\.ws===ws&&s\.status==='connected'&&!s\.busy/);
 });

@@ -141,8 +141,20 @@ export default {
      const model=env.GEMINI_LIVE_MODEL||'gemini-3.8-live';
      const targets=cleanTargetPhrases(b.targetPhrases);
      const instructions=coachInstructions({topic,level,mode,goals,targets});
+     const geminiWsUrl='wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained';
+     const resumeSessionId=typeof b.resumeSessionId==='string'?b.resumeSessionId:'';
+     const resumptionHandle=typeof b.resumptionHandle==='string'?b.resumptionHandle.slice(0,4000):'';
+     const isResume=!!(resumeSessionId&&resumptionHandle);
+     if(isResume){
+       if(!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(resumeSessionId))return reply({error:'Session ID không hợp lệ.'},400,allowed);
+       const ownerCheck=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/speakwise_voice_sessions?id=eq.'+encodeURIComponent(resumeSessionId)+'&select=id,owner_id,status',{
+         headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:String(req.headers.get('authorization')||'')}
+       });
+       const owned=await ownerCheck.json().catch(()=>[]);
+       if(!ownerCheck.ok||!Array.isArray(owned)||!owned.length||owned[0].owner_id!==user.id||owned[0].status!=='active')return reply({error:'Không tìm thấy buổi học đang hoạt động để nối lại.'},404,allowed);
+     }
      const now=Date.now();
-     const setup={
+     const baseSetup={
        model:'models/'+model,
        generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:env.GEMINI_LIVE_VOICE||'Aoede'}}}},
        systemInstruction:{parts:[{text:instructions}]},
@@ -150,17 +162,30 @@ export default {
        outputAudioTranscription:{},
        realtimeInputConfig:{automaticActivityDetection:{disabled:false},activityHandling:'START_OF_ACTIVITY_INTERRUPTS'}
      };
-     const tokenResponse=await fetch('https://generativelanguage.googleapis.com/v1alpha/auth_tokens',{
-       method:'POST',
-       headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
-       body:JSON.stringify({uses:1,expireTime:new Date(now+25*60*1000).toISOString(),newSessionExpireTime:new Date(now+60*1000).toISOString(),bidiGenerateContentSetup:setup})
-     });
-     const tokenData=await tokenResponse.json().catch(()=>({}));
+     // Long sessions: sliding-window compression avoids Gemini's 15-minute context cut-off and
+     // session resumption lets the browser continue the same conversation when the connection is recycled.
+     const longSetup={...baseSetup,contextWindowCompression:{slidingWindow:{}},sessionResumption:isResume?{handle:resumptionHandle}:{}};
+     const requestToken=async setupConfig=>{
+       const response=await fetch('https://generativelanguage.googleapis.com/v1alpha/auth_tokens',{
+         method:'POST',
+         headers:{'content-type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
+         body:JSON.stringify({uses:1,expireTime:new Date(now+25*60*1000).toISOString(),newSessionExpireTime:new Date(now+60*1000).toISOString(),bidiGenerateContentSetup:setupConfig})
+       });
+       const data=await response.json().catch(()=>({}));
+       return {response,data};
+     };
+     let {response:tokenResponse,data:tokenData}=await requestToken(longSetup);
+     // If Gemini rejects the long-session fields, fall back to the plain setup so Voice Mode still works.
+     if(tokenResponse.status===400&&!isResume){
+       console.warn('SpeakWise Gemini Live long-session setup rejected; using the plain setup',JSON.stringify({code:tokenData?.error?.status||'unknown'}));
+       ({response:tokenResponse,data:tokenData}=await requestToken(baseSetup));
+     }
      if(!tokenResponse.ok||!tokenData.name){
        const detail=limit(tokenData?.error?.message||('Gemini token HTTP '+tokenResponse.status),220);
        console.warn('SpeakWise Gemini Live token error',JSON.stringify({status:tokenResponse.status,code:tokenData?.error?.status||'unknown'}));
        return reply({error:'Không thể tạo Gemini Live session token.',detail},502,allowed);
      }
+     if(isResume)return reply({provider:'gemini',ephemeralToken:tokenData.name,expiresAt:tokenData.expireTime||null,sessionId:resumeSessionId,model,websocketUrl:geminiWsUrl,resumed:true},200,allowed);
      const sessionResponse=await fetch(env.SUPABASE_URL.replace(/\/$/,'')+'/rest/v1/rpc/start_speakwise_voice_session',{
        method:'POST',
        headers:{apikey:env.SUPABASE_PUBLISHABLE_KEY,authorization:String(req.headers.get('authorization')||''),'content-type':'application/json'},
@@ -169,14 +194,13 @@ export default {
      const created=await sessionResponse.json().catch(()=>null);
      if(!sessionResponse.ok){
        const message=String(created?.message||created?.details||'');
-       if(message.includes('DAILY_VOICE_LIMIT'))return reply({error:'Bạn đã đạt giới hạn 5 phiên Voice Mode trong ngày. Hãy quay lại vào ngày mai.'},429,allowed);
        if(sessionResponse.status===403)return reply({error:'Voice Mode chỉ dành cho tài khoản đã được xác minh đủ 18 tuổi.'},403,allowed);
        console.warn('SpeakWise Gemini Live session insert failed',JSON.stringify({status:sessionResponse.status,code:created?.code||'unknown'}));
        return reply({error:'Không thể tạo bản ghi buổi học Voice Mode.'},503,allowed);
      }
      const createdSessionId=typeof created==='string'?created:(created?.id||created?.session_id);
      if(!createdSessionId)return reply({error:'Database did not return a Voice session ID.'},502,allowed);
-     return reply({provider:'gemini',ephemeralToken:tokenData.name,expiresAt:tokenData.expireTime||null,sessionId:createdSessionId,model,websocketUrl:'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained'},200,allowed);
+     return reply({provider:'gemini',ephemeralToken:tokenData.name,expiresAt:tokenData.expireTime||null,sessionId:createdSessionId,model,websocketUrl:geminiWsUrl},200,allowed);
    }
    if(path==='/voice/session'){
      if(!env.OPENAI_API_KEY)return reply({error:'Voice Mode chưa được cấu hình. Thiếu OPENAI_API_KEY trên Worker.'},503,allowed);
@@ -227,7 +251,6 @@ export default {
      const created=await sessionResponse.json().catch(()=>null);
      if(!sessionResponse.ok){
        const message=String(created?.message||created?.details||'');
-       if(message.includes('DAILY_VOICE_LIMIT'))return reply({error:'Bạn đã đạt giới hạn 5 phiên Voice Mode trong ngày. Hãy quay lại vào ngày mai.'},429,allowed);
        if(sessionResponse.status===403)return reply({error:'Voice Mode chỉ dành cho tài khoản đã được xác minh đủ 18 tuổi.'},403,allowed);
        console.warn('SpeakWise voice session insert failed',JSON.stringify({status:sessionResponse.status,code:created?.code||'unknown'}));
        return reply({error:'Không thể tạo bản ghi buổi học Voice Mode.'},503,allowed);

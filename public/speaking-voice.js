@@ -32,7 +32,7 @@
   const report=()=>document.querySelectorAll('[data-swv-report]').forEach(host=>{host.hidden=!s.report;if(!s.report)return;host.replaceChildren();const add=(tag,text,cls)=>{const e=document.createElement(tag);e.textContent=text;if(cls)e.className=cls;host.append(e);return e};add('h3','Your learning report');add('p',s.report.overall_summary||'Analysis completed.','swv-report-summary');const c=s.report.criteria||{};[['Fluency & Coherence','fluency_coherence'],['Lexical Resource','lexical_resource'],['Grammar','grammatical_range_accuracy'],['Pronunciation','pronunciation']].forEach(([name,key])=>{const v=c[key]||{};add('h4',name+(v.status==='not_assessed'?' · Not assessed':v.status==='insufficient_evidence'?' · Limited evidence':' · Evidence checked'));add('p',(v.summary||'Insufficient evidence.')+(v.confidence&&v.confidence!=='none'?' (Confidence: '+v.confidence+').':''));(v.evidence||[]).slice(0,2).forEach(x=>add('blockquote','“'+(x.quote||'')+'” — '+(x.interpretation||'')));if(v.next_action)add('small','Next step: '+v.next_action)});[['Strengths',s.report.strengths],['Priority improvements',s.report.priority_improvements],['Practice plan',s.report.practice_plan]].forEach(([name,items])=>{if(!Array.isArray(items)||!items.length)return;add('h4',name);const ul=document.createElement('ul');items.forEach(x=>{const li=document.createElement('li');li.textContent=x;ul.append(li)});host.append(ul)});(s.report.corrections||[]).forEach(x=>add('p',(x.original||'')+' → '+(x.suggested||'')+' · '+(x.explanation||'')))});
   const loadHistory=async()=>{const host=$('[data-swv-history-list]');if(!host)return;host.textContent='Loading recent sessions…';try{await auth();const r=await client().from('speakwise_voice_sessions').select('id,topic,cefr_level,started_at,duration_seconds,analysis_status,analysis').order('started_at',{ascending:false}).limit(8);if(r.error)throw r.error;host.replaceChildren();if(!r.data?.length){const p=document.createElement('p');p.className='swv-empty';p.textContent='No saved practice sessions yet.';host.append(p);return}r.data.forEach(row=>{const card=document.createElement('article');card.className='swv-history-item';const open=document.createElement('button');open.type='button';open.className='swv-history-open';open.dataset.swv='open-history';open.dataset.sessionId=row.id;open.textContent=row.topic||'Speaking practice';const meta=document.createElement('small');const date=new Date(row.started_at);meta.textContent=(Number.isNaN(date.getTime())?'':date.toLocaleString())+' · '+(row.cefr_level||'B1')+' · '+(row.duration_seconds||0)+'s · '+(row.analysis_status==='completed'?'Report ready':row.analysis_status||'Saved');card.append(open,meta);host.append(card)})}catch(e){host.textContent=e?.message||'Could not load saved sessions.'}};
   const openHistory=async id=>{if(s.status==='connected'||s.dbId){toast('End the current Voice session before opening history.');return}try{await auth();const db=client();const row=await db.from('speakwise_voice_sessions').select('id,topic,cefr_level,started_at,duration_seconds,analysis,analysis_status').eq('id',id).single();if(row.error)throw row.error;const turns=await db.from('speakwise_voice_turns').select('turn_id,turn_index,speaker,text,status,occurred_at').eq('session_id',id).order('turn_index',{ascending:true});if(turns.error)throw turns.error;s.turns.clear();s.order=[];(turns.data||[]).forEach(t=>{const key=t.speaker+':'+String(t.turn_id||'').slice(0,90);s.turns.set(key,{...t});s.order.push(key)});s.report=row.data.analysis_status==='completed'?row.data.analysis:null;s.lastId=row.data.id;transcript();report();stage('Saved session loaded',new Date(row.data.started_at).toLocaleString());status('completed','History');controls()}catch(e){toast('Could not open this session: '+(e?.message||e))}};
-  const duration=()=>{if(!s.started)return;const n=Math.floor((Date.now()-s.started)/1000),v=String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');document.querySelectorAll('[data-swv-time]').forEach(e=>{if(e.textContent!==v)e.textContent=v});if(n>=(s.ws?720:1200)&&!s.busy){stage('Session time limit reached','Your practice session is ending.');end()}};
+  const duration=()=>{if(!s.started)return;const n=Math.floor((Date.now()-s.started)/1000),v=String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');document.querySelectorAll('[data-swv-time]').forEach(e=>{if(e.textContent!==v)e.textContent=v});};
   const stopGeminiPlayback=()=>{s.geminiSources.forEach(x=>{try{x.stop()}catch(_){}});s.geminiSources.clear();s.playbackTime=s.audioContext?.currentTime||0};
   const pcmToBase64=(samples,inputRate)=>{
     const ratio=inputRate/16000,outLength=Math.floor(samples.length/ratio),pcm=new Int16Array(outLength);
@@ -50,36 +50,60 @@
     s.geminiSources.add(source);source.onended=()=>s.geminiSources.delete(source)
   };
   const onGeminiEvent=event=>{
-    if(event.setupComplete){status('connected','Connected');stage('Listening to you','Speak naturally. You can interrupt Coach AI by speaking.');s.started=Date.now();s.timer=setInterval(duration,1000);return}
+    if(event.sessionResumptionUpdate?.resumable&&event.sessionResumptionUpdate.newHandle)s.resumeHandle=String(event.sessionResumptionUpdate.newHandle);
+    if(event.setupComplete){status('connected','Connected');stage('Listening to you','Speak naturally. You can interrupt Coach AI by speaking.');if(!s.started){s.started=Date.now();s.timer=setInterval(duration,1000)}return}
     const content=event.serverContent||{};
     if(content.inputTranscription?.text){const id='gemini-user-'+(++s.geminiTurn);upsert('user',id,content.inputTranscription.text,'final');stage('Your turn is complete','Coach AI is preparing a response.')}
     if(content.outputTranscription?.text){const id='gemini-assistant-'+s.geminiTurn;const key='assistant:'+id;const previous=s.turns.get(key)?.text||'';upsert('assistant',id,previous+content.outputTranscription.text,'partial');stage('Coach AI is speaking','You can interrupt at any time.')}
     for(const part of content.modelTurn?.parts||[]){if(part.inlineData?.data)playGeminiAudio(part.inlineData.data);if(part.text){const id='gemini-assistant-'+s.geminiTurn,key='assistant:'+id,previous=s.turns.get(key)?.text||'';upsert('assistant',id,previous+part.text,'partial')}}
     if(content.interrupted){stopGeminiPlayback();const key=[...s.order].reverse().find(x=>x.startsWith('assistant:')&&s.turns.get(x)?.status==='partial');if(key)s.turns.get(key).status='interrupted';transcript();stage('Coach AI interrupted','Continue speaking when you are ready.')}
     if(content.turnComplete){const key=[...s.order].reverse().find(x=>x.startsWith('assistant:')&&s.turns.get(x)?.status==='partial');if(key)s.turns.get(key).status='final';transcript();stage('Your turn','Speak whenever you are ready.')}
-    if(event.goAway){s.error='Gemini is preparing to close this connection. Please end and restart the session.';attach()}
+    if(event.goAway){stage('Refreshing the connection','Your session will continue in a moment.')}
     if(event.error){s.error=event.error.message||'Gemini Live session error.';attach()}
   };
+  const openGeminiSocket=credential=>new Promise((resolve,reject)=>{
+    const url=(credential.websocketUrl||'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained')+'?access_token='+encodeURIComponent(credential.ephemeralToken);
+    const ws=new WebSocket(url);ws.binaryType='arraybuffer';s.ws=ws;
+    let settled=false;const timeout=setTimeout(()=>{if(!settled){settled=true;reject(Error('Gemini Live connection timed out.'))}},15000);
+    ws.onopen=()=>ws.send(JSON.stringify({setup:{model:'models/'+(credential.model||'gemini-3.8-live'),generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:'Aoede'}}}},inputAudioTranscription:{},outputAudioTranscription:{},realtimeInputConfig:{automaticActivityDetection:{disabled:false},activityHandling:'START_OF_ACTIVITY_INTERRUPTS'}}}));
+    ws.onmessage=message=>{let event;try{const raw=message.data;event=JSON.parse(typeof raw==='string'?raw:new TextDecoder().decode(raw))}catch(_){return}onGeminiEvent(event);if(event.setupComplete&&!settled){settled=true;clearTimeout(timeout);resolve()}else if(event.error&&!settled){settled=true;clearTimeout(timeout);reject(Error(event.error.message||'Gemini Live setup failed.'))}};
+    ws.onerror=()=>{if(!settled){settled=true;clearTimeout(timeout);reject(Error('Could not connect to Gemini Live. Check API key, model access and quota.'))}};
+    ws.onclose=()=>{if(!settled){settled=true;clearTimeout(timeout);reject(Error('Gemini Live connection closed during setup.'));return}if(s.ws===ws&&s.status==='connected'&&!s.busy)reconnectGemini()};
+  });
+  const reconnectGemini=async()=>{
+    if(s.reconnecting)return;s.reconnecting=true;
+    try{
+      if(!s.resumeHandle)throw Error('Gemini closed the connection and no resumption handle was available');
+      let lastError;
+      for(let attempt=1;attempt<=3;attempt++){
+        if(s.busy||!s.dbId)return;
+        try{
+          stage('Refreshing the connection','Your session will continue in a moment.');
+          await auth();
+          const credential=await post('/voice/gemini-token',{...(s.ctx||{}),resumeSessionId:s.dbId,resumptionHandle:s.resumeHandle});
+          if(s.busy||!s.dbId)return;
+          await openGeminiSocket(credential);
+          return
+        }catch(e){lastError=e;await new Promise(r=>setTimeout(r,800*attempt))}
+      }
+      throw lastError||Error('Reconnect failed')
+    }catch(e){
+      if(!s.busy&&s.dbId){s.error='Gemini Live ended this session ('+(e?.message||'connection closed')+'). Your transcript has been saved.';stage('Session ended by Gemini','Saving your transcript and report.');end()}
+    }finally{s.reconnecting=false}
+  };
   const startGemini=async c=>{
+    s.ctx=c;s.resumeHandle=null;s.reconnecting=false;
     const credential=await post('/voice/gemini-token',c);if(!credential.ephemeralToken||!credential.sessionId)throw Error('Worker did not return a valid Gemini Live token.');
     s.dbId=credential.sessionId;
     const stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});s.stream=stream;
     const AudioContextClass=window.AudioContext||window.webkitAudioContext;if(!AudioContextClass)throw Error('This browser does not support Web Audio.');
     s.audioContext=new AudioContextClass();await s.audioContext.resume();
-    const url=(credential.websocketUrl||'wss://generativelanguage.googleapis.com/ws/google.ai.generativelanguage.v1alpha.GenerativeService.BidiGenerateContentConstrained')+'?access_token='+encodeURIComponent(credential.ephemeralToken);
-    const ws=new WebSocket(url);ws.binaryType='arraybuffer';s.ws=ws;
-    await new Promise((resolve,reject)=>{
-      let settled=false;const timeout=setTimeout(()=>{if(!settled){settled=true;reject(Error('Gemini Live connection timed out.'))}},15000);
-      ws.onopen=()=>ws.send(JSON.stringify({setup:{model:'models/'+(credential.model||'gemini-3.8-live'),generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:'Aoede'}}}},inputAudioTranscription:{},outputAudioTranscription:{},realtimeInputConfig:{automaticActivityDetection:{disabled:false},activityHandling:'START_OF_ACTIVITY_INTERRUPTS'}}}));
-      ws.onmessage=message=>{let event;try{const raw=message.data;event=JSON.parse(typeof raw==='string'?raw:new TextDecoder().decode(raw))}catch(_){return}onGeminiEvent(event);if(event.setupComplete&&!settled){settled=true;clearTimeout(timeout);resolve()}else if(event.error&&!settled){settled=true;clearTimeout(timeout);reject(Error(event.error.message||'Gemini Live setup failed.'))}};
-      ws.onerror=()=>{if(!settled){settled=true;clearTimeout(timeout);reject(Error('Could not connect to Gemini Live. Check API key, model access and quota.'))}};
-      ws.onclose=()=>{if(!settled){settled=true;clearTimeout(timeout);reject(Error('Gemini Live connection closed during setup.'))}else if(s.status==='connected'&&!s.busy){s.error='Gemini Live connection closed.';status('error','Disconnected');stage('Connection closed','End this session and start a new one.');attach()}};
-    });
+    await openGeminiSocket(credential);
     const source=s.audioContext.createMediaStreamSource(stream),processor=s.audioContext.createScriptProcessor(4096,1,1);
     processor.onaudioprocess=event=>{
-      if(s.muted||ws.readyState!==WebSocket.OPEN)return;
+      const sock=s.ws;if(s.muted||!sock||sock.readyState!==WebSocket.OPEN)return;
       const input=event.inputBuffer.getChannelData(0),encoded=pcmToBase64(input,s.audioContext.sampleRate);
-      if(encoded)ws.send(JSON.stringify({realtimeInput:{audio:{data:encoded,mimeType:'audio/pcm;rate=16000'}}}));
+      if(encoded)sock.send(JSON.stringify({realtimeInput:{audio:{data:encoded,mimeType:'audio/pcm;rate=16000'}}}));
       const output=event.outputBuffer.getChannelData(0);output.fill(0)
     };
     source.connect(processor);processor.connect(s.audioContext.destination);s.processor=processor;

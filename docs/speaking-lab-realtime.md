@@ -20,10 +20,10 @@ This feature adds a separate Voice Mode to the existing Speaking Lab. The curren
 - Raw microphone audio is not persisted by this implementation.
 - Transcript turns and the generated report are stored in the signed-in user's Supabase account.
 - Both tables have RLS enabled and ownership policies for authenticated users.
-- Session inserts are checked by a private database trigger. A private daily-usage ledger enforces five starts per UTC day even if a user deletes session history; clients cannot read or modify that ledger.
-- The user must explicitly consent in the Voice Room before microphone access.
+- Session inserts are checked by a private database trigger (owner and adult flag). Usage is still counted per user and UTC day in a private ledger for statistics, but it does not limit sessions; clients cannot read or modify that ledger.
+- Microphone access is requested by the browser permission prompt when a session starts. The Voice Room no longer shows a separate consent checkbox.
 - The user can delete the most recently saved Voice session from the Voice Room. Deleting a session cascades to its turns.
-- The Voice Room includes a recent-session list (latest 8) with transcript/report viewing and deletion of the selected session. A separate full-page history dashboard is not included.
+- The Voice Room no longer lists recent sessions. A saved session can be deleted from the Voice Room right after it ends; older sessions are only removable from the database. A separate full-page history dashboard is not included.
 - Session rows are created by the Worker-backed database RPC only after adult verification; the browser cannot create a billable session row before this gate.
 
 ## Access control
@@ -47,8 +47,8 @@ The intended product audience is adults. If the product is ever opened to minors
 
 ## Current limits
 
-- Maximum 5 session starts per UTC day, enforced by a per-user PostgreSQL advisory transaction lock and a private usage ledger. This is an application usage cap, not a provider billing hard stop; provider-side spend limits are still required.
-- Frontend automatically ends a session after 20 minutes. This is a client-side guard, not a hard server-side duration guarantee.
+- There is no application cap on the number of Voice sessions per day or on session length. Limits come from Gemini only: your API quota and billing, and Gemini Live's own session rules. Keep provider-side spend limits configured in Google AI Studio because nothing in the app stops usage.
+- Long sessions: the Gemini setup enables sliding-window context compression (no 15-minute context cut-off) and session resumption. Gemini recycles each WebSocket connection after roughly 10 minutes; the browser then requests a fresh ephemeral token with the saved resumption handle (`resumeSessionId` + `resumptionHandle`) and reconnects to the same conversation without creating a new session row or counting a new session. If resumption is not possible (for example Gemini rejects the handle after 3 attempts), the session is ended cleanly and the transcript and report are saved. The recorded duration is only sanity-limited to 24 hours.
 - Transcript analysis does not provide an official IELTS band score.
 - Pronunciation is explicitly marked not_assessed; transcript text alone is insufficient to assess pronunciation.
 
@@ -70,10 +70,10 @@ wrangler.toml contains non-secret Supabase and model settings. The Realtime API 
 10. Delete the saved session and verify its turns are cascade-deleted.
 11. Verify Text Mode still works unchanged.
 12. Verify a non-verified account receives HTTP 403 and an unauthenticated account receives HTTP 401.
-13. Verify the sixth daily session attempt is rejected, including concurrent requests; retain provider-side spend limits because the application quota is not a hard billing control.
+13. Verify more than five Voice sessions in one UTC day are allowed and that a conversation longer than 15 minutes continues across at least one automatic reconnect with no gap in the transcript; retain provider-side spend limits because the app does not cap usage.
 14. Verify a user without the server-controlled adult flag cannot create a session row through the RPC or receive a Realtime client secret.
 15. Verify every report evidence quote and correction source phrase exists in the saved learner transcript; unsupported quotes must be removed.
-16. Verify the latest 8 sessions appear in history, selecting one restores its transcript/report, and deleting it also deletes its turns without resetting the daily quota.
+16. Verify a just-ended session can be deleted from the Voice Room and that its turns are cascade-deleted.
 
 ## Automated checks
 
