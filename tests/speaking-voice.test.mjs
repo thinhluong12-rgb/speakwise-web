@@ -312,3 +312,45 @@ test('sync never writes back shared topics and entries that have no owner', asyn
   assert.match(syncJs, /const customTopics=await withoutSharedRows\('speakwise_topics',customTopicsAll\);/);
   assert.match(syncJs, /const entries=await withoutSharedRows\('speakwise_entries',entriesAll\);/);
 });
+
+test('sign-in screen shows the logo, the email and password form, then Google below it', () => {
+  const start = syncJs.indexOf('function showDialog');
+  const block = syncJs.slice(start, syncJs.indexOf('// ---------- account menu'));
+  assert.match(syncJs, /const LOGO_SRC='\/speakwise-logo\.webp'/);
+  assert.match(syncJs, /<div class="sw-auth-logo"><img src="'\+LOGO_SRC\+'"/);
+  assert.ok(block.indexOf('id="swAuthEmail"') > 0 && block.indexOf('id="swAuthPassword"') > block.indexOf('id="swAuthEmail"'));
+  assert.ok(block.indexOf("id=\"swGoogleLogin\"") > block.indexOf('id="swAuthSubmit"'), 'the Google button sits below the form');
+  assert.match(block, /signInWithOAuth\(\{provider:'google'/);
+  assert.match(block, /signInWithPassword/);
+  assert.match(block, /signUp\(/);
+  assert.match(block, /resetPasswordForEmail/);
+  assert.match(indexHtml, /sync\.js\?v=8/);
+});
+
+test('bottom-left account chip shows a small avatar with the name; its menu changes photo and name or signs out', () => {
+  assert.match(syncJs, /avatarHtml\('sw-avatar-sm'\)\+'<span class="sw-account-name">'/);
+  assert.match(syncJs, /id="swMenuAvatar"[^]*?Thay đổi ảnh đại diện/);
+  assert.match(syncJs, /id="swMenuRename"[^]*?Đổi tên hiển thị/);
+  assert.match(syncJs, /id="swMenuLogout"[^]*?Đăng xuất/);
+  assert.match(syncJs, /api\.auth\.updateUser\(\{data:\{display_name:value\}\}\)/);
+  assert.match(syncJs, /api\.auth\.signOut\(\)/);
+  assert.match(syncJs, /resizeToSquare\(file,192\)/);
+  assert.match(syncJs, /profile:\{avatar:/, 'the picture is synced with the other preferences');
+  assert.match(indexHtml, /#syncButton\.is-profile\{display:flex/);
+  assert.match(indexHtml, /\.sw-account-menu\{position:fixed/);
+});
+
+test('profile helpers: display name, initials and a strict check of stored avatars', () => {
+  const grab = name => { const m = syncJs.match(new RegExp('const ' + name + '=[^\\n]+;')); assert.ok(m, name); return m[0]; };
+  const api = new Function(grab('displayName') + grab('initials') + grab('validAvatar') + ';return { displayName, initials, validAvatar };')();
+  assert.equal(api.displayName({ email: 'thinh@example.com', user_metadata: {} }), 'thinh');
+  assert.equal(api.displayName({ email: 'x@y.z', user_metadata: { full_name: 'Thịnh Lương' } }), 'Thịnh Lương');
+  assert.equal(api.displayName({ email: 'x@y.z', user_metadata: { display_name: 'Coach', full_name: 'Other' } }), 'Coach');
+  assert.equal(api.initials('thịnh'), 'T');
+  assert.equal(api.initials(''), '?');
+  assert.equal(api.validAvatar({ dataUrl: 'data:image/jpeg;base64,/9j/4AAQSkZJRg==' }), true);
+  assert.equal(api.validAvatar({ dataUrl: 'data:image/svg+xml;base64,PHN2Zz4=' }), false, 'only JPEG data URLs made by the app are accepted');
+  assert.equal(api.validAvatar({ dataUrl: 'javascript:alert(1)' }), false);
+  assert.equal(api.validAvatar({ dataUrl: 'data:image/jpeg;base64,' + 'A'.repeat(70000) }), false, 'oversized values are refused');
+  assert.equal(api.validAvatar(null), false);
+});
