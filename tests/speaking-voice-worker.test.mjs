@@ -288,3 +288,23 @@ test('resuming is refused for a session that belongs to someone else or is no lo
     mock.mock.restore();
   }
 });
+
+test('Gemini Live coach is told which collocations the learner already used successfully', async t => {
+  let setup;
+  t.mock.method(globalThis, 'fetch', async (url, options = {}) => {
+    const target = String(url);
+    if (target.includes('/auth/v1/user')) return json({ id: 'u1', app_metadata: { adult_verified: true } });
+    if (target.includes('/v1alpha/auth_tokens')) { setup = JSON.parse(options.body).bidiGenerateContentSetup; return json({ name: 'tok' }); }
+    if (target.includes('/rpc/start_speakwise_voice_session')) return json('11111111-1111-4111-8111-111111111111');
+    throw new Error('Unexpected network request: ' + target);
+  });
+  const response = await worker.fetch(request('/voice/gemini-token', {
+    topic: 'Work & Business',
+    targetPhrases: [{ id: 'e1', phrase: 'handle a heavy workload', meaning: 'xử lý', used: false }, { id: 'e2', phrase: 'meet tight deadlines', meaning: 'kịp hạn', used: true }]
+  }), { ...baseEnv, GEMINI_API_KEY: 'x' });
+  assert.equal(response.status, 200);
+  const text = setup.systemInstruction.parts[0].text;
+  assert.match(text, /"meet tight deadlines" \(kịp hạn\) \[already used successfully before\]/);
+  assert.doesNotMatch(text, /"handle a heavy workload" \(xử lý\) \[already used/);
+  assert.match(text, /low priority/);
+});

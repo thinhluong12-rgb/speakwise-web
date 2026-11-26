@@ -189,6 +189,10 @@
      st.settings={...st.settings,...(rem.settings||{})};
      if(!st.learningJourney&&rem.learningJourney)st.learningJourney=rem.learningJourney;
      if(!st.lastPractice&&rem.lastPractice)st.lastPractice=rem.lastPractice;
+     // Collocations the learner has used in Speaking Lab: the most recently updated record per collocation wins.
+     const usedMerged={...(st.speakingUsed||{})};
+     for(const [id,rec] of Object.entries(rem.speakingUsed||{})){if(!id||!rec||typeof rec!=='object')continue;const mine=usedMerged[id];if(!mine||String(mine.updatedAt||'')<String(rec.updatedAt||''))usedMerged[id]=rec}
+     st.speakingUsed=usedMerged;
    }
    st.activityDates=[...new Set([...(st.activityDates||[]),...(activities.data||[]).map(x=>x.activity_day).filter(Boolean)])];
    st.reviewEvents=st.reviewEvents.slice(-3000);
@@ -239,7 +243,8 @@
    if(mistakes.length){const {error}=await api.from('speakwise_mistakes').upsert(mistakes,{onConflict:'id'});if(error)throw error;}
    const preferences={user_id:user.id,data:{
      settings:st.settings||{},lastPractice:st.lastPractice||null,learningJourney:st.learningJourney||null,
-     deletedMistakeIds:[...new Set(st.deletedMistakeIds||[])].slice(-400)
+     deletedMistakeIds:[...new Set(st.deletedMistakeIds||[])].slice(-400),
+     speakingUsed:Object.fromEntries(Object.entries(st.speakingUsed||{}).filter(([id,r])=>id&&r&&typeof r==='object').sort((a,b)=>String(b[1].updatedAt||'').localeCompare(String(a[1].updatedAt||''))).slice(0,1500))
    }};
    const prefResult=await api.from('speakwise_preferences').upsert(preferences,{onConflict:'user_id'});
    if(prefResult.error)throw prefResult.error;

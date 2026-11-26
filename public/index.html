@@ -713,6 +713,27 @@ input,textarea,select{font-size:16px}
   .sw-sl-field select{font-size:16px}
   .library-table .phrase-cell{font-size:18px}
 }
+
+/* v4.8 collocation checklist: same height as the Coach AI panel, scrolls when longer */
+.sw-sl-side{position:relative;min-height:0}
+.sw-sl-targets-card{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden;padding:0!important}
+.sw-sl-targets-head{flex:0 0 auto;padding:18px 18px 12px;border-bottom:1px solid #e2ece8;background:#fff}
+.sw-sl-targets-head h3{margin:0 0 8px!important}
+.sw-sl-targets-head .sw-sl-target-topic{margin:0!important}
+.sw-sl-targets-head [data-used-count]{white-space:nowrap}
+.sw-sl-target-hint{margin:8px 0 0!important;font-size:14px!important;line-height:1.55;color:#6b8a80}
+.sw-sl-targets-card .sw-sl-target-list{flex:1 1 auto;min-height:0;overflow-y:auto;padding:14px 16px 18px;align-content:start}
+.sw-sl-targets-card .sw-sl-target-empty{padding:16px 18px;overflow-y:auto}
+.sw-sl-target-list li.sw-sl-target{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.sw-sl-target-text{display:grid;gap:3px;min-width:0}
+.sw-sl-target-check{flex:0 0 auto;width:24px;height:24px;margin:0;accent-color:#1d7a64;cursor:pointer}
+.sw-sl-target.is-used{background:#eef3f1;border-color:#d6e2dd}
+.sw-sl-target.is-used strong{color:#7a948b;text-decoration:line-through;text-decoration-thickness:1px}
+.sw-sl-target.is-used span{opacity:.75}
+@media (max-width:1000px){
+  .sw-sl-side{display:block}
+  .sw-sl-targets-card{position:static;max-height:480px}
+}
 </style>
   <link rel="stylesheet" href="/speaking-voice.css?v=1"/>
   <script>document.documentElement.classList.add("sw-auth-pending");</script>
@@ -815,9 +836,9 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function readSaved(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch(e){return {}}}
   function combine(seedList, userList, key){const map = new Map((seedList||[]).map(e=>[e[key],e]));for(const e of (userList||[])){if(e && e[key])map.set(e[key],{...(map.get(e[key])||{}),...e})}return [...map.values()]}
   const saved=readSaved();
-  const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[],mistakes:Array.isArray(saved.mistakes)?saved.mistakes:[],deletedMistakeIds:Array.isArray(saved.deletedMistakeIds)?saved.deletedMistakeIds:[],settings:{dailyGoal:8,...(saved.settings||{})},lastPractice:saved.lastPractice||null,learningJourney:saved.learningJourney||null};
+  const store={topics:combine(seed.topics,saved.topics,'id'), entries:combine(seed.entries,saved.entries,'id'), progress:saved.progress||{},deletedIds:saved.deletedIds||[], sessions:saved.sessions||seed.sessions||[], activityDates:Array.isArray(saved.activityDates)?saved.activityDates:[], reviewEvents:Array.isArray(saved.reviewEvents)?saved.reviewEvents:[],mistakes:Array.isArray(saved.mistakes)?saved.mistakes:[],deletedMistakeIds:Array.isArray(saved.deletedMistakeIds)?saved.deletedMistakeIds:[],settings:{dailyGoal:8,...(saved.settings||{})},lastPractice:saved.lastPractice||null,learningJourney:saved.learningJourney||null,speakingUsed:(saved.speakingUsed&&typeof saved.speakingUsed==='object'&&!Array.isArray(saved.speakingUsed))?saved.speakingUsed:{}};
   store.entries=store.entries.filter(e=>!store.deletedIds.includes(e.id));
-  const ui={view:'home',speakingTopic:(store.topics&&store.topics[0]&&store.topics[0].name)||'Daily Life',speakingLevel:'B1',speakingStarted:false,speakingMessages:[],speakingInput:'',speakingBusy:false,speakingError:null,speakingLastReply:'',homeTab:'overview',labStep:'learn',labIds:[],labAt:0,reviewIds:[],reviewAt:0,reviewRevealed:false,hintBusy:false,hintResult:null,hintError:null,section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceOriginalResult:null, sentenceRevisionText:'', sentenceRevisionResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false, recordingStopping:false, recordingPurpose:'original',focusMode:false,journey:null,journeyReturn:'home'};
+  const ui={view:'home',targetsEpoch:Date.now(),speakingTopic:(store.topics&&store.topics[0]&&store.topics[0].name)||'Daily Life',speakingLevel:'B1',speakingStarted:false,speakingMessages:[],speakingInput:'',speakingBusy:false,speakingError:null,speakingLastReply:'',homeTab:'overview',labStep:'learn',labIds:[],labAt:0,reviewIds:[],reviewAt:0,reviewRevealed:false,hintBusy:false,hintResult:null,hintError:null,section:'all',topic:'all',filter:'all',query:'',page:1, perPage:8, drawer:null, modal:null, deck:[], deckAt:0, flipped:false, quizMode:'multiple',quiz:null,quizCorrect:0,quizTotal:0, quizSeen:[], quizTopic:'all', quizScope:'all',showAnswer:false, recallText:'', sentenceMode:'write', sentenceText:'', sentenceResult:null, sentenceOriginalResult:null, sentenceRevisionText:'', sentenceRevisionResult:null, sentenceError:null, sentenceBusy:false, audioBlob:null, audioUrl:null, recording:false, recordingStopping:false, recordingPurpose:'original',focusMode:false,journey:null,journeyReturn:'home'};
   const GROUPS_KEY='speakwise-collapsed-groups-v3';
   let collapsedGroups={life:false,ielts:false};
   try { const remembered=JSON.parse(localStorage.getItem(GROUPS_KEY)||'{}'); collapsedGroups={life:!!remembered.life,ielts:!!remembered.ielts}; } catch (_) {}
@@ -1598,18 +1619,35 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     let pool=topicIds.length?store.entries.filter(e=>topicIds.includes(e.topicId)):[];
     if(!pool.length&&Array.isArray(ui.labIds)&&ui.labIds.length){const ids=new Set(ui.labIds);pool=store.entries.filter(e=>ids.has(e.id))}
     if(!pool.length)pool=store.entries.slice();
+    const usedMap=store.speakingUsed||{};
+    const epoch=Number(ui.targetsEpoch)||Date.now();
+    const isUsed=e=>!!(usedMap[e.id]&&usedMap[e.id].used);
+    // Collocations the learner already used in an EARLIER practice go to the bottom; ticks made in the current practice keep their place until the next one.
+    const usedEarlier=e=>{const r=usedMap[e.id];if(!r||!r.used)return false;const t=Date.parse(r.usedAt||r.updatedAt||'');return !Number.isFinite(t)||t<epoch};
     const rank=e=>{const st=stageOf(e.id);return st==='new'?0:st==='recognised'?1:st==='recalled'?2:3};
-    return pool.map((e,i)=>({e,i,r:rank(e)})).sort((a,b)=>a.r-b.r||a.i-b.i).slice(0,max)
-      .map(({e})=>({phrase:String(e.phrase||'').slice(0,80),meaning:String(e.meaning||'').slice(0,120)})).filter(x=>x.phrase);
+    return pool.map((e,i)=>({e,i,g:usedEarlier(e)?1:0,r:rank(e)})).sort((a,b)=>a.g-b.g||a.r-b.r||a.i-b.i).slice(0,max)
+      .map(({e})=>({id:e.id,phrase:String(e.phrase||'').slice(0,80),meaning:String(e.meaning||'').slice(0,120),used:isUsed(e)})).filter(x=>x.phrase);
   }
   window.SpeakwiseSpeaking={targets:speakingTargetPhrases};
   function speakingTargetsCard(){
     const current=ui.speakingTopic;
-    const items=speakingTargetPhrases(current,12);
-    const list=items.length
-      ?'<ul class="sw-sl-target-list">'+items.map(x=>'<li><strong>'+esc(x.phrase)+'</strong>'+(x.meaning?'<span>'+esc(x.meaning)+'</span>':'')+'</li>').join('')+'</ul>'
-      :'<p class="sw-sl-target-empty">Chủ đề này chưa có collocation nào. Coach AI sẽ gợi ý các collocation tự nhiên phù hợp với cuộc trò chuyện.</p>';
-    return '<article class="sw-sl-side-card sw-sl-targets-card"><h3>'+icon('lightbulb')+' Collocations Coach AI will help you use</h3><p class="sw-sl-target-topic">Topic: <strong>'+esc(current)+'</strong></p>'+list+'</article>';
+    const items=speakingTargetPhrases(current,999);
+    const done=items.filter(x=>x.used).length;
+    const rows=items.map(x=>'<li class="sw-sl-target'+(x.used?' is-used':'')+'"><div class="sw-sl-target-text"><strong>'+esc(x.phrase)+'</strong>'+(x.meaning?'<span>'+esc(x.meaning)+'</span>':'')+'</div><input type="checkbox" class="sw-sl-target-check" data-used-id="'+esc(x.id)+'" aria-label="Đã dùng thành công: '+esc(x.phrase)+'" title="Tick khi bạn đã dùng thành công cụm này"'+(x.used?' checked':'')+'></li>').join('');
+    const head='<div class="sw-sl-targets-head"><h3>'+icon('lightbulb')+' Collocations Coach AI will help you use</h3><p class="sw-sl-target-topic">Topic: <strong>'+esc(current)+'</strong>'+(items.length?' · <span data-used-count>'+done+'/'+items.length+' đã dùng</span>':'')+'</p>'+(items.length?'<p class="sw-sl-target-hint">Tick ô vuông khi bạn đã dùng thành công cụm đó. Ở lần luyện sau, cụm đã dùng sẽ xuống cuối danh sách.</p>':'')+'</div>';
+    const body=items.length?'<ul class="sw-sl-target-list">'+rows+'</ul>':'<p class="sw-sl-target-empty">Chủ đề này chưa có collocation nào. Coach AI sẽ gợi ý các collocation tự nhiên phù hợp với cuộc trò chuyện.</p>';
+    return '<article class="sw-sl-side-card sw-sl-targets-card">'+head+body+'</article>';
+  }
+  function toggleSpeakingUsed(id,checked,box){
+    if(!id)return;
+    const now=new Date().toISOString();
+    store.speakingUsed=store.speakingUsed||{};
+    const old=store.speakingUsed[id]||{};
+    store.speakingUsed[id]={used:!!checked,usedAt:checked?now:(old.usedAt||null),updatedAt:now,count:(Number(old.count)||0)+(checked?1:0)};
+    save();
+    const li=box&&box.closest('li');if(li)li.classList.toggle('is-used',!!checked);
+    const card=box&&box.closest('.sw-sl-targets-card');const counter=card&&card.querySelector('[data-used-count]');
+    if(counter){const all=card.querySelectorAll('.sw-sl-target-check');counter.textContent=[...all].filter(x=>x.checked).length+'/'+all.length+' đã dùng'}
   }
   function speakingLabPage(){
     const topicNames=speakingTopicNames();if(!topicNames.includes(ui.speakingTopic))ui.speakingTopic=topicNames[0];
@@ -1981,7 +2019,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'startRevisionRecord':startRecord('revision');break;
       case 'sendSpeakingAudio':sendSpeakingTurn('speak');break;
       case 'discardSpeakingAudio':cleanupAudio();render();break;
-      case 'newSpeakingChat':cleanupAudio();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingInput='';ui.speakingError=null;ui.speakingLastReply='';render();break;
+      case 'newSpeakingChat':cleanupAudio();ui.targetsEpoch=Date.now();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingInput='';ui.speakingError=null;ui.speakingLastReply='';render();break;
       case 'startSpeakingChat':startSpeakingConversation();break;
       case 'speakingStarter':ui.speakingInput=el.dataset.prompt||'';render();document.getElementById('speakingInput')?.focus();break;
       case 'speakReply':speakSpeakingReply();break;
@@ -2005,7 +2043,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     }
   });
   document.addEventListener('input',e=>{if(e.target.id==='searchInput'){ui.query=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='recallInput')ui.recallText=e.target.value;if(e.target.id==='sentenceInput')ui.sentenceText=e.target.value;if(e.target.id==='sentenceRevisionInput')ui.sentenceRevisionText=e.target.value;if(e.target.id==='speakingInput')ui.speakingInput=e.target.value});
-  document.addEventListener('change',e=>{if(e.target.id==='statusFilter'){ui.filter=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='practiceTopic'||e.target.id==='practiceScope'){ui.quizTopic=document.getElementById('practiceTopic').value;ui.quizScope=document.getElementById('practiceScope').value;resetLabSession();render()}if(e.target.id==='dailyGoalSelect'){store.settings.dailyGoal=Number(e.target.value)||8;save();render()}if(e.target.id==='slTopic'&&ui.speakingTopic!==e.target.value){ui.speakingTopic=e.target.value;cleanupAudio();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingLastReply='';ui.speakingError=null;render()}if(e.target.id==='slLevel'&&ui.speakingLevel!==e.target.value){ui.speakingLevel=e.target.value;cleanupAudio();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingLastReply='';ui.speakingError=null;render()}if(e.target.id==='entryTopic')updateFormTopics();if(e.target.id==='aiTopicSelect'){const box=document.getElementById('aiNewTopicField');if(box)box.hidden=e.target.value!=='__new__'}});
+  document.addEventListener('change',e=>{if(e.target.classList&&e.target.classList.contains('sw-sl-target-check')){toggleSpeakingUsed(e.target.dataset.usedId,e.target.checked,e.target);return}if(e.target.id==='statusFilter'){ui.filter=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='practiceTopic'||e.target.id==='practiceScope'){ui.quizTopic=document.getElementById('practiceTopic').value;ui.quizScope=document.getElementById('practiceScope').value;resetLabSession();render()}if(e.target.id==='dailyGoalSelect'){store.settings.dailyGoal=Number(e.target.value)||8;save();render()}if(e.target.id==='slTopic'&&ui.speakingTopic!==e.target.value){ui.speakingTopic=e.target.value;ui.targetsEpoch=Date.now();cleanupAudio();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingLastReply='';ui.speakingError=null;render()}if(e.target.id==='slLevel'&&ui.speakingLevel!==e.target.value){ui.speakingLevel=e.target.value;ui.targetsEpoch=Date.now();cleanupAudio();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingLastReply='';ui.speakingError=null;render()}if(e.target.id==='entryTopic')updateFormTopics();if(e.target.id==='aiTopicSelect'){const box=document.getElementById('aiNewTopicField');if(box)box.hidden=e.target.value!=='__new__'}});
   document.addEventListener('submit',e=>{if(e.target.id==='entryForm'){e.preventDefault();saveEntry(e.target)}if(e.target.id==='recallForm'){e.preventDefault();checkRecall(ui.recallText)}if(e.target.id==='aiCreateForm'){e.preventDefault();generateCollocations()}if(e.target.id==='journeyRecallForm'){e.preventDefault();journeyCheckRecall(document.getElementById('journeyRecallInput')?.value||'')}if(e.target.id==='speakingForm'){e.preventDefault();sendSpeakingTurn('text')}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeModal();document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')}if(e.key===' '&&!['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName)&&!ui.modal&&!ui.drawer&&ui.view==='flashcards'){e.preventDefault();if(ui.deck[ui.deckAt]){ui.flipped=!ui.flipped;render()}}if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-action="detail"]')){e.preventDefault();openDrawer(e.target.dataset.id)}if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('flashcard')&&ui.view==='flashcards'){e.preventDefault();ui.flipped=!ui.flipped;render()}});
   document.getElementById('addBtn').addEventListener('click',()=>entryModal());

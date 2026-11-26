@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const indexHtml = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
+const syncJs = await readFile(new URL('../public/sync.js', import.meta.url), 'utf8');
 const worker = await readFile(new URL('../ai-worker.js', import.meta.url), 'utf8');
 const browser = await readFile(new URL('../public/speaking-voice.js', import.meta.url), 'utf8');
 const migration = await readFile(new URL('../supabase/migrations/20261117094612_secure_voice_session_creation_and_daily_quota.sql', import.meta.url), 'utf8');
@@ -217,4 +218,63 @@ test('Topic Collocations and Speaking Lab use larger type', () => {
   assert.match(indexHtml, /\.library-table \.phrase-cell\{font-size:19px/);
   assert.match(indexHtml, /\.sw-sl-bubble\{font-size:18px/);
   assert.match(indexHtml, /\.sw-sl-target-list strong\{font-size:18px/);
+});
+
+function loadTargetApi(store, ui) {
+  const fnStart = indexHtml.indexOf('function speakingTargetPhrases');
+  const fnEnd = indexHtml.indexOf('window.SpeakwiseSpeaking=', fnStart);
+  const cardStart = indexHtml.indexOf('function speakingTargetsCard');
+  const cardEnd = indexHtml.indexOf('function speakingLabPage', cardStart);
+  return new Function('store', 'ui', 'stageOf', 'esc', 'icon', 'save',
+    indexHtml.slice(fnStart, fnEnd) + indexHtml.slice(cardStart, cardEnd) + ';return { speakingTargetPhrases, speakingTargetsCard, toggleSpeakingUsed };')(
+    store, ui, () => 'new', x => String(x), () => '', () => {});
+}
+
+test('collocations used in an earlier practice move to the bottom; ticks made in this practice keep their place', () => {
+  const topics = [{ id: 't', name: 'Work & Business' }];
+  const entries = ['a', 'b', 'c', 'd'].map((x, i) => ({ id: 'e' + i, topicId: 't', phrase: 'phrase ' + x, meaning: 'm ' + x }));
+  const epoch = Date.parse('2026-11-25T10:00:00Z');
+  const store = { topics, entries, speakingUsed: {
+    e0: { used: true, usedAt: '2026-11-24T09:00:00Z', updatedAt: '2026-11-24T09:00:00Z' },
+    e2: { used: true, usedAt: '2026-11-25T10:30:00Z', updatedAt: '2026-11-25T10:30:00Z' },
+    e3: { used: false, usedAt: '2026-11-20T09:00:00Z', updatedAt: '2026-11-24T09:00:00Z' }
+  } };
+  const ui = { labIds: [], speakingTopic: 'Work & Business', targetsEpoch: epoch };
+  const api = loadTargetApi(store, ui);
+  const list = api.speakingTargetPhrases('Work & Business');
+  assert.deepEqual(list.map(x => x.phrase), ['phrase b', 'phrase c', 'phrase d', 'phrase a'], 'e0 (earlier) goes last; e2 (this practice) and unticked e3 keep their place');
+  assert.deepEqual(list.map(x => x.used), [false, true, false, true]);
+  ui.targetsEpoch = Date.parse('2026-11-26T00:00:00Z');
+  assert.deepEqual(api.speakingTargetPhrases('Work & Business').map(x => x.phrase), ['phrase b', 'phrase d', 'phrase a', 'phrase c'], 'after a new practice starts, e2 moves down too');
+});
+
+test('each collocation has a right-hand tick box that is remembered and synced', () => {
+  const store = { topics: [{ id: 't', name: 'Daily' }], entries: [{ id: 'x1', topicId: 't', phrase: 'take a break', meaning: 'nghỉ' }], speakingUsed: {} };
+  const ui = { labIds: [], speakingTopic: 'Daily', targetsEpoch: Date.now() };
+  let saved = 0;
+  const api = new Function('store', 'ui', 'stageOf', 'esc', 'icon', 'save',
+    indexHtml.slice(indexHtml.indexOf('function speakingTargetPhrases'), indexHtml.indexOf('window.SpeakwiseSpeaking=')) +
+    indexHtml.slice(indexHtml.indexOf('function speakingTargetsCard'), indexHtml.indexOf('function speakingLabPage')) +
+    ';return { speakingTargetsCard, toggleSpeakingUsed };')(store, ui, () => 'new', x => String(x), () => '', () => { saved++; });
+  assert.match(api.speakingTargetsCard(), /<input type="checkbox" class="sw-sl-target-check" data-used-id="x1"/);
+  assert.match(api.speakingTargetsCard(), /0\/1 đã dùng/);
+  api.toggleSpeakingUsed('x1', true, null);
+  assert.equal(store.speakingUsed.x1.used, true);
+  assert.equal(store.speakingUsed.x1.count, 1);
+  assert.ok(saved >= 1, 'ticks are saved');
+  assert.match(api.speakingTargetsCard(), /is-used/);
+  assert.match(api.speakingTargetsCard(), /checked/);
+  api.toggleSpeakingUsed('x1', false, null);
+  assert.equal(store.speakingUsed.x1.used, false);
+  assert.match(indexHtml, /speakingUsed:\(saved\.speakingUsed&&typeof saved\.speakingUsed==='object'/);
+  assert.match(indexHtml, /e\.target\.classList\.contains\('sw-sl-target-check'\)\)\{toggleSpeakingUsed/);
+  assert.match(syncJs, /speakingUsed:Object\.fromEntries/);
+  assert.match(syncJs, /usedMerged/);
+});
+
+test('the collocation card matches the Coach AI panel height and scrolls inside', () => {
+  assert.match(indexHtml, /\.sw-sl-targets-card\{position:absolute;inset:0;display:flex;flex-direction:column;overflow:hidden/);
+  assert.match(indexHtml, /\.sw-sl-targets-card \.sw-sl-target-list\{flex:1 1 auto;min-height:0;overflow-y:auto/);
+  assert.match(indexHtml, /\.sw-sl-targets-card\{position:static;max-height:480px\}/);
+  assert.match(indexHtml, /ui\.targetsEpoch=Date\.now\(\);ui\.speakingStarted=false/);
 });
