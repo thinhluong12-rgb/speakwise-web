@@ -278,3 +278,37 @@ test('the collocation card matches the Coach AI panel height and scrolls inside'
   assert.match(indexHtml, /\.sw-sl-targets-card\{position:static;max-height:480px\}/);
   assert.match(indexHtml, /ui\.targetsEpoch=Date\.now\(\);ui\.speakingStarted=false/);
 });
+
+test('sync never writes back shared topics and entries that have no owner', async () => {
+  const start = syncJs.indexOf('async function withoutSharedRows');
+  const end = syncJs.indexOf('async function push(){');
+  assert.ok(start > 0 && end > start);
+  const calls = [];
+  const sharedIds = new Set(['travel-experiences', 'shared-entry-7']);
+  const api = { from: table => ({ select: () => ({ in: (column, ids) => ({ is: async (field, value) => {
+    calls.push({ table, column, field, value, count: ids.length });
+    return { data: ids.filter(id => sharedIds.has(id)).map(id => ({ id })), error: null };
+  } }) }) }) };
+  const withoutSharedRows = new Function('api', syncJs.slice(start, end) + ';return withoutSharedRows;')(api);
+
+  const mine = { id: 'my-custom-topic' };
+  const result = await withoutSharedRows('speakwise_topics', [{ id: 'travel-experiences' }, mine]);
+  assert.deepEqual(result, [mine], 'the shared topic is not pushed, the learner\'s own topic is');
+  assert.deepEqual(calls[0], { table: 'speakwise_topics', column: 'id', field: 'owner_id', value: null, count: 2 });
+
+  calls.length = 0;
+  assert.deepEqual(await withoutSharedRows('speakwise_entries', []), []);
+  assert.equal(calls.length, 0, 'nothing to check, no request');
+
+  const many = Array.from({ length: 400 }, (_, i) => ({ id: 'e' + i }));
+  many.push({ id: 'shared-entry-7' });
+  const filtered = await withoutSharedRows('speakwise_entries', many);
+  assert.equal(filtered.length, 400);
+  assert.deepEqual(calls.map(c => c.count), [150, 150, 101], 'ids are checked in batches');
+
+  const failing = new Function('api', syncJs.slice(start, end) + ';return withoutSharedRows;')({ from: () => ({ select: () => ({ in: () => ({ is: async () => ({ data: null, error: new Error('boom') }) }) }) }) });
+  await assert.rejects(() => failing('speakwise_topics', [{ id: 'x' }]), /boom/);
+
+  assert.match(syncJs, /const customTopics=await withoutSharedRows\('speakwise_topics',customTopicsAll\);/);
+  assert.match(syncJs, /const entries=await withoutSharedRows\('speakwise_entries',entriesAll\);/);
+});

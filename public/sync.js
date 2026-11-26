@@ -202,18 +202,33 @@
    ctx.render();label('Tài khoản');
   }catch(e){label('Tài khoản');tell(e.message||String(e))}finally{loading=false}
  }
+ // Topics and entries that live in the database without an owner (owner_id is null) are shared content.
+ // The browser may download them, but only their owner can change a row, so they must never be written back.
+ async function withoutSharedRows(table,rows){
+  if(!rows.length)return rows;
+  const shared=new Set();
+  const ids=rows.map(r=>r.id);
+  for(let i=0;i<ids.length;i+=150){
+   const {data,error}=await api.from(table).select('id').in('id',ids.slice(i,i+150)).is('owner_id',null);
+   if(error)throw error;
+   for(const r of data||[])shared.add(r.id);
+  }
+  return rows.filter(r=>!shared.has(r.id));
+ }
  async function push(){
   if(!enabled()||loading||writing)return;
   writing=true;
   try{
    const st=ctx.store,baseIds=new Set((window.SPEAKING_SEED?.entries||[]).map(x=>x.id));
    const baseTopicIds=new Set((window.SPEAKING_SEED?.topics||[]).map(x=>x.id));
-   const customTopics=st.topics.filter(t=>!baseTopicIds.has(t.id)).map(t=>({
+   const customTopicsAll=st.topics.filter(t=>!baseTopicIds.has(t.id)).map(t=>({
      id:t.id,owner_id:user.id,name:t.name,vi:t.vi||t.name,section:t.section||'life',
      icon:t.icon||'book',description:t.desc||''
    }));
+   const customTopics=await withoutSharedRows('speakwise_topics',customTopicsAll);
    if(customTopics.length){const {error}=await api.from('speakwise_topics').upsert(customTopics,{onConflict:'id'});if(error)throw error;}
-   const entries=st.entries.filter(e=>!baseIds.has(e.id)).map(e=>({id:e.id,owner_id:user.id,topic_id:e.topicId,phrase:e.phrase,ipa:e.ipa||'',meaning:e.meaning,example:e.example,note:e.note||'',source:e.source||'',added_at:e.addedAt||new Date().toISOString().slice(0,10)}));
+   const entriesAll=st.entries.filter(e=>!baseIds.has(e.id)).map(e=>({id:e.id,owner_id:user.id,topic_id:e.topicId,phrase:e.phrase,ipa:e.ipa||'',meaning:e.meaning,example:e.example,note:e.note||'',source:e.source||'',added_at:e.addedAt||new Date().toISOString().slice(0,10)}));
+   const entries=await withoutSharedRows('speakwise_entries',entriesAll);
    if(entries.length){const {error}=await api.from('speakwise_entries').upsert(entries,{onConflict:'id'});if(error)throw error;}
    const progress=Object.entries(st.progress).map(([entry_id,p])=>({user_id:user.id,entry_id,level:Math.max(0,Math.min(5,Number(p.level)||0)),reviews:Number(p.reviews)||0,next_review:p.nextReview||null,starred:!!p.starred,
      last_reviewed:p.lastReviewed||null,evidence:p.evidence||{}}));
