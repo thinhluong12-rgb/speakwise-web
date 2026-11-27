@@ -811,6 +811,11 @@ input,textarea,select{font-size:16px}
 .sw-menu-primary{border:0;background:linear-gradient(120deg,#12766a,#1d9a86);color:#fff}
 .sw-menu-primary:disabled{opacity:.7;cursor:wait}
 .sw-menu-secondary{border:1.5px solid #d3e2dd;background:#fff;color:#335049}
+
+/* v5.0 no repeated section titles above the content */
+@media (min-width:951px){.topbar{display:none}}
+.topics-toolbar{display:flex;justify-content:flex-end;margin:0 0 16px}
+.topics-toolbar .btn{font-size:15px;padding:11px 18px}
 </style>
   <link rel="stylesheet" href="/speaking-voice.css?v=1"/>
   <script>document.documentElement.classList.add("sw-auth-pending");</script>
@@ -835,12 +840,8 @@ input,textarea,select{font-size:16px}
     <main class="main">
       <header class="topbar">
         <div class="mobile-logo"><button class="icon-button menu-button" id="menuToggle" aria-label="Mở menu"><span data-icon="menu"></span></button><img src="/speakwise-logo.webp" alt=""/><b>Speakwise<span class="brand-dot">.</span></b></div>
-        <div class="breadcrumb" id="breadcrumb"><span>Không gian học</span><span class="crumb-chevron">/</span><strong>Trang chủ</strong></div>
-        <div class="topbar-actions">
-          <button class="btn btn-primary" id="addBtn"><span data-icon="plus"></span><span>Thêm cụm từ</span></button>
-          <input type="file" id="importFile" accept=".xlsx,.xls,.csv,.json,application/json,text/csv" hidden/>
-        </div>
       </header>
+      <input type="file" id="importFile" accept=".xlsx,.xls,.csv,.json,application/json,text/csv" hidden/>
       <div class="page-content" id="pageContent"></div>
       <nav class="sw-mobile-nav" aria-label="Điều hướng học tập">
         <button type="button" data-nav="home"><span data-icon="layout-grid"></span><span>Trang chủ</span></button>
@@ -971,7 +972,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   function renderIcons(){document.querySelectorAll('[data-icon]').forEach(el=>{el.innerHTML=icon(el.dataset.icon)})}
   function sidebar(){document.querySelectorAll('[data-nav]').forEach(b=>b.classList.toggle('active',b.dataset.nav===(ui.view==='journey'?'home':ui.view==='mistakes'?'home':['memory','apply','review'].includes(ui.view)?'flashcards':ui.view)))}
   const navNames={home:'Trang chủ',speakingLab:'Speaking Lab',flashcards:'Learning Lab',memory:'Learning Lab',apply:'Learning Lab',review:'Learning Lab',topics:'Topic Collocations',journey:'Learning Journey',mistakes:'Trang chủ'};
-  function header(){const suffix=ui.view==='home'&&ui.homeTab!=='overview'?' / '+(ui.homeTab==='mistakes'?'My Mistakes':'Mastery'):'';document.getElementById('breadcrumb').innerHTML='<strong>'+(navNames[ui.view]||'Trang chủ')+suffix+'</strong>'}
+  function header(){}
   // Navigation and in-panel headings provide the section context; do not repeat it above every card.
   function intro(){return ''}
   function hero(){return `<div class="hero"><div class="hero-content"><div class="hero-tag">${icon('sparkles')} YOUR SPEAKING LIBRARY</div><h2>Học theo ngữ cảnh.<br/>Diễn đạt tự nhiên hơn mỗi ngày.</h2><p>Lưu lại những collocations đã luyện, xem ví dụ thực tế và ôn lại đúng lúc — không cần học thuộc cả bài mẫu.</p></div><div class="hero-art" aria-hidden="true"><div class="hero-circle-one"></div><div class="hero-circle-two"></div><div class="hero-card-float"><strong>learn in context ✦</strong><p>Speak clearly & confidently</p></div><div class="hero-chip">make it stick ↗</div></div></div>`}
@@ -1066,7 +1067,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       '<span><strong>'+m.recalled+'</strong> Đã nhớ lại</span><span><strong>'+m.applied+'</strong> Vận dụng vững</span></div>'+
       '<div class="sw-topic-report-track" role="progressbar" aria-label="Vận dụng vững theo topic" aria-valuemin="0" aria-valuemax="'+m.total+'" aria-valuenow="'+m.applied+'"><i style="width:'+percent+'%"></i></div></div>';
   }
-  function library(){return topicGrid()+
+  function library(){return '<div class="topics-toolbar"><button type="button" class="btn btn-primary" data-action="addEntry">'+icon('plus')+' <span>Thêm cụm từ</span></button></div>'+topicGrid()+
       (ui.topic==='all'?'':topicReport(ui.topic)+'<section class="library-card" id="selectedTopicCollocations"><div class="library-toolbar"><div class="library-toolbar-title"><strong>'+
       (ui.topic==='all'?'All Collocations':esc(topic(ui.topic)?.name||'All Collocations'))+
       '</strong><small><span id="filteredCount">'+filterEntries().length+'</span> collocations</small></div><div class="filters"><div class="search-box">'+icon('search')+
@@ -1748,7 +1749,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
     const busy=ui.speakingBusy?'<div class="sw-sl-typing">SpeakWise is thinking…</div>':'';
     const error=ui.speakingError?'<div class="sw-sl-error">'+esc(ui.speakingError)+'</div>':'';
     const audioReady=!!ui.audioBlob&&!ui.recording;
-    return '<section class="sw-speaking-lab"><div class="sw-sl-head"><div><span class="eyebrow">SPEAKWISE CONVERSATION STUDIO</span><h1>Speaking Lab</h1><p>Build natural collocations through real conversations with your AI coach.</p></div><div class="sw-sl-status"><i></i> AI Conversation Partner</div></div>'+
+    return '<section class="sw-speaking-lab">'+
       '<div class="sw-sl-toolbar"><div class="sw-sl-field"><label for="slTopic">Conversation topic</label><select id="slTopic">'+speakingTopicNames().map(x=>'<option value="'+esc(x)+'" '+(ui.speakingTopic===x?'selected':'')+'>'+esc(x)+'</option>').join('')+'</select></div>'+
       '<div class="sw-sl-field"><label for="slLevel">Your speaking level</label><select id="slLevel">'+['A2','B1','B2','C1'].map(x=>'<option value="'+x+'" '+(ui.speakingLevel===x?'selected':'')+'>'+x+'</option>').join('')+'</select></div>'+
       '<div style="display:flex;align-items:end"><button class="btn btn-muted" type="button" data-action="newSpeakingChat">'+icon('refresh')+' New conversation</button></div></div>'+
@@ -2049,6 +2050,7 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
       case 'startToday':startJourney(recommendation(Number(store.settings.dailyGoal)||8));break;
       case 'resumeJourney':resumeJourney();break;
       case 'entryTab':entryModal(null,el.dataset.tab);break;
+      case 'addEntry':entryModal();break;
       case 'selectExcel':document.getElementById('importFile').click();break;
       case 'downloadTemplate':downloadTemplate();break;
       case 'saveAIDrafts':saveAIDrafts();break;
@@ -2123,7 +2125,6 @@ window.SPEAKING_SEED = {"version":1,"app":"Speaking Collocations Studio","topics
   document.addEventListener('change',e=>{if(e.target.classList&&e.target.classList.contains('sw-sl-target-check')){toggleSpeakingUsed(e.target.dataset.usedId,e.target.checked,e.target);return}if(e.target.id==='statusFilter'){ui.filter=e.target.value;ui.page=1;libraryTable()}if(e.target.id==='practiceTopic'||e.target.id==='practiceScope'){ui.quizTopic=document.getElementById('practiceTopic').value;ui.quizScope=document.getElementById('practiceScope').value;resetLabSession();render()}if(e.target.id==='dailyGoalSelect'){store.settings.dailyGoal=Number(e.target.value)||8;save();render()}if(e.target.id==='slTopic'&&ui.speakingTopic!==e.target.value){ui.speakingTopic=e.target.value;ui.targetsEpoch=Date.now();cleanupAudio();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingLastReply='';ui.speakingError=null;render()}if(e.target.id==='slLevel'&&ui.speakingLevel!==e.target.value){ui.speakingLevel=e.target.value;ui.targetsEpoch=Date.now();cleanupAudio();ui.speakingStarted=false;ui.speakingMessages=[];ui.speakingLastReply='';ui.speakingError=null;render()}if(e.target.id==='entryTopic')updateFormTopics();if(e.target.id==='aiTopicSelect'){const box=document.getElementById('aiNewTopicField');if(box)box.hidden=e.target.value!=='__new__'}});
   document.addEventListener('submit',e=>{if(e.target.id==='entryForm'){e.preventDefault();saveEntry(e.target)}if(e.target.id==='recallForm'){e.preventDefault();checkRecall(ui.recallText)}if(e.target.id==='aiCreateForm'){e.preventDefault();generateCollocations()}if(e.target.id==='journeyRecallForm'){e.preventDefault();journeyCheckRecall(document.getElementById('journeyRecallInput')?.value||'')}if(e.target.id==='speakingForm'){e.preventDefault();sendSpeakingTurn('text')}});
   document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeDrawer();closeModal();document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')}if(e.key===' '&&!['INPUT','TEXTAREA','SELECT','BUTTON'].includes(document.activeElement.tagName)&&!ui.modal&&!ui.drawer&&ui.view==='flashcards'){e.preventDefault();if(ui.deck[ui.deckAt]){ui.flipped=!ui.flipped;render()}}if((e.key==='Enter'||e.key===' ')&&e.target.matches('tr[data-action="detail"]')){e.preventDefault();openDrawer(e.target.dataset.id)}if((e.key==='Enter'||e.key===' ')&&e.target.classList.contains('flashcard')&&ui.view==='flashcards'){e.preventDefault();ui.flipped=!ui.flipped;render()}});
-  document.getElementById('addBtn').addEventListener('click',()=>entryModal());
   document.getElementById('importFile').addEventListener('change',e=>{importCollocationsFile(e.target.files?.[0]);e.target.value='';});
   document.getElementById('menuToggle').addEventListener('click',()=>{document.getElementById('sidebar').classList.add('open');document.getElementById('mobileShade').classList.add('open')});
   document.getElementById('mobileShade').addEventListener('click',()=>{document.getElementById('sidebar').classList.remove('open');document.getElementById('mobileShade').classList.remove('open')});

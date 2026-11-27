@@ -354,3 +354,20 @@ test('profile helpers: display name, initials and a strict check of stored avata
   assert.equal(api.validAvatar({ dataUrl: 'data:image/jpeg;base64,' + 'A'.repeat(70000) }), false, 'oversized values are refused');
   assert.equal(api.validAvatar(null), false);
 });
+
+test('no repeated section title above the content, and Add collocation lives only in Topic Collocations', () => {
+  assert.ok(!indexHtml.includes('id="breadcrumb"'), 'the breadcrumb that repeated the section title is gone');
+  assert.ok(!indexHtml.includes('id="addBtn"'), 'the global add button is gone from the top bar');
+  assert.ok(!indexHtml.includes('SPEAKWISE CONVERSATION STUDIO'));
+  assert.ok(!indexHtml.includes('Build natural collocations through real conversations with your AI coach.'));
+  assert.ok(!indexHtml.includes('AI Conversation Partner'));
+  assert.ok(!indexHtml.includes('<h1>Speaking Lab</h1>'));
+  assert.match(indexHtml, /function header\(\)\{\}/);
+  assert.match(indexHtml, /@media \(min-width:951px\)\{\.topbar\{display:none\}\}/);
+  const library = indexHtml.slice(indexHtml.indexOf('function library()'), indexHtml.indexOf('function libraryTable()'));
+  assert.match(library, /data-action="addEntry"/);
+  assert.match(library, /Thêm cụm từ/);
+  assert.equal((indexHtml.match(/Thêm cụm từ/g) || []).length, 1, 'only one place offers Add collocation');
+  assert.match(indexHtml, /case 'addEntry':entryModal\(\);break;/);
+  assert.match(indexHtml, /<input type="file" id="importFile"/, 'the Excel import input stays available to the add dialog');
+});
